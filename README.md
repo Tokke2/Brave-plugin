@@ -10,9 +10,9 @@ Inget skickas till någon server: PDF:en skapas lokalt av webbläsarens egen uts
 
 | Funktion | Beskrivning |
 | --- | --- |
-| **Valda webbplatser** | PDF-funktionen är bara aktiv på de sajter du lägger till i listan. Övriga sajter lämnas ifred. |
+| **Valda webbplatser** | Den flytande knappen visas bara på sajter du lagt till. Ett uttryckligt klick på ikonen i verktygsfältet kan ändå spara den aktuella sidan. |
 | **Knapp på sidan** | En liten flytande PDF-knapp längst ner på valda sidor. Ett klick = en PDF. Placering och synlighet går att ställa in. |
-| **Knapp i verktygsfältet** | Visar status för aktuell flik och sparar sidan. Om sajten inte är vald läggs den till direkt. |
+| **Knapp i verktygsfältet** | Ett klick sparar den aktuella sidan som PDF och öppnar spar-dialogen. Högerklicka på ikonen och välj **Öppna Sida till PDF-panelen** för status, historik och inställningar. |
 | **Snabbtangenter** | `Alt+Shift+P` sparar aktuell sida med spar-dialog, `Alt+Shift+O` sparar tyst i Hämtade filer. **Alt-klick** på sidknappen sparar också utan dialog. |
 | **Artikelläge** | Skriver bara ut artikelns innehåll – nav, banners, reklam och kommentarer rensas bort innan PDF:en skapas. |
 | **Mörk utskrift** | Ljus text på mörk bakgrund, för kvällsläsning och skärm. |
@@ -31,31 +31,40 @@ Inget skickas till någon server: PDF:en skapas lokalt av webbläsarens egen uts
 
 ---
 
-## Installation
+## Installation och manuella uppdateringar
 
-### Chrome
+Tillägget distribueras som källkod från GitHub och installeras som **opackat**. Det uppdateras inte automatiskt; du hämtar själv en ny kopia och laddar om tillägget.
 
-1. Ladda ner eller kopiera mappen `browser-extension` till datorn.
-2. Öppna `chrome://extensions`.
+### Installera i Brave
+
+1. Hämta projektets ZIP från GitHub (**Code → Download ZIP**) och packa upp den.
+2. Öppna `brave://extensions`.
 3. Slå på **Utvecklarläge** uppe till höger.
-4. Klicka på **Läs in opackat** och välj mappen `browser-extension` (mappen som innehåller `manifest.json`).
-5. Tillägget dyker upp i verktygsfältet – gärna fäst det med nål-ikonen.
+4. Klicka på **Läs in opackat** och välj den uppackade projektmappen som innehåller `manifest.json` direkt i roten.
+5. Tillägget dyker upp i verktygsfältet – fäst det gärna med nål-ikonen.
 
-### Brave
+I Chrome gör du samma sak på `chrome://extensions`.
 
-Samma sak, men öppna `brave://extensions` i steg 2. Brave använder samma tilläggsmotor som Chrome.
+Efter installationen öppnas inställningssidan automatiskt. Där lägger du till de webbplatser som ska få den flytande sidknappen. Klick på ikonen i verktygsfältet sparar däremot alltid den aktuella vanliga webbsidan direkt; högerklicka på ikonen och välj **Öppna Sida till PDF-panelen** för status, historik och inställningar.
 
-Efter installationen öppnas inställningssidan automatiskt. Där lägger du till de webbplatser som ska få sparas.
+### Uppdatera manuellt
 
-> Tillägget laddas som ”opackat” och uppdateras inte automatiskt. Uppdatera genom att klicka på uppdateringsikonen för tillägget på `chrome://extensions`.
+1. Högerklicka på tilläggsikonen, öppna panelen och välj **Sök efter uppdateringar**. Kontrollern jämför versionsnumret och Git-blob-hasharna för filerna i den installerade projektmappen mot GitHubs senaste publicerade release. Den visar ändrade/tillagda/borttagna filer men installerar ingenting automatiskt.
+2. Om en nyare version finns, öppna releasen via länken och hämta dess **Source code (zip)**.
+3. Packa upp ZIP-filen och kopiera de nya filerna till **samma mapp** som du ursprungligen valde i **Läs in opackat**, så att gamla filer ersätts.
+4. Öppna `brave://extensions` (eller `chrome://extensions` i Chrome) och klicka på tilläggets **Läs in igen**-ikon.
+
+Den första kontrollen ber om åtkomst till GitHubs publika releaseinformation (`api.github.com`). Ingen siddata skickas. Att behålla samma mapp och inte ta bort tillägget hjälper till att behålla dess lokala inställningar. Om du flyttar eller tar bort mappen behöver du läsa in tillägget från den nya platsen.
+
+Varje release behöver en GitHub-tagg som motsvarar versionen i `manifest.json`, exempelvis `v0.0.1`. Uppdateringssökningen jämför versionsnumret och Git-blob-hasharna för projektfilerna.
 
 ---
 
 ## Använda tillägget
 
-1. **Lägg till en webbplats** – klicka på tilläggets ikon när du står på sidan och välj **Lägg till … och spara**. Du kan också skriva adressen direkt i inställningarna, t.ex. `aftonbladet.se`, `*.example.com` eller `example.com/nyheter`.
-2. **Bevilja åtkomst** när webbläsaren frågar. Det behövs för att den flytande knappen ska kunna visas på just den sajten. Utan åtkomst fungerar fortfarande verktygsfältets knapp och snabbtangenten.
-3. **Klicka på PDF-knappen** som dyker upp längst ner på sidan. Panelen visar innan du klickar vilket **filnamn** filen får, och därefter öppnas spar-dialogen där du väljer mapp (mappen `Sidor/<sajt>` och titelnamnet är förvalt).
+1. **Spara direkt** – klicka på tilläggets ikon i verktygsfältet. Den aktuella webbsidan sparas som PDF och spar-dialogen öppnas. Detta fungerar även om sajten inte finns i listan.
+2. **Lägg till en webbplats** om du vill ha den flytande PDF-knappen på själva sidan. Öppna panelen genom att högerklicka på tilläggsikonen och välja **Öppna Sida till PDF-panelen**, gå sedan till inställningarna och lägg till t.ex. `aftonbladet.se`, `*.example.com` eller `example.com/nyheter`.
+3. **Bevilja åtkomst** när webbläsaren frågar. Det behövs bara för att den flytande knappen ska visas på just den sajten. Klicka sedan på PDF-knappen längst ner på sidan för att spara den.
 4. Efter sparning visas **Visa i mapp** och **Öppna PDF** – ett klick och du står i rätt mapp, även om du valde en helt annan mapp i dialogen.
    Vill du slippa dialogen stänger du av **Fråga var filen ska sparas** i panelen – då hamnar filen direkt i Hämtade filer. Samma sak gör **Alt-klick** på sidknappen eller snabbtangenten `Alt+Shift+O`, utan att du ändrar inställningen.
 
@@ -160,7 +169,7 @@ Medan tillägget skapar PDF:en visas en liten informationsrad i webbläsaren: *�
 ## Utveckling
 
 ```
-browser-extension/
+Projektroten/
 ├── manifest.json
 ├── icons/                  # appikon: icon.svg (+ förenklad icon16.svg) och PNG 16/32/48/128
 ├── fonts/                  # Inter (variabel, latin) + OFL-licens
@@ -183,13 +192,14 @@ browser-extension/
 └── package.json
 ```
 
+Kör kommandona från projektroten:
+
 ```bash
-cd browser-extension
-npm test        # 40 tester för mönster, filnamn, utskrift, tema och översättningar
+npm test        # tester för mönster, filnamn, utskrift, tema och översättningar
 npm run check   # syntaxkontroll av alla skript
 ```
 
-Aktuell version: **1.4.0**.
+Aktuell version: **0.0.1**.
 
 Se **[FORBATTRINGAR.md](FORBATTRINGAR.md)** för 25 förslag på förbättringar inom
 funktion, design, tema, typografi och kod – nio av dem är genomförda i 1.4.0.

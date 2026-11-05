@@ -22,6 +22,7 @@ import { resolveLang, t } from './lib/i18n.js';
 const CONTENT_SCRIPT_ID = 'site-pdf-button';
 const CONTENT_FILES = ['src/content.js'];
 const MENU_ID = 'page-to-pdf-save';
+const PANEL_MENU_ID = 'page-to-pdf-open-panel';
 const BADGE_BUSY = '…';
 const BADGE_OK = '✓';
 const BADGE_FAIL = '!';
@@ -616,7 +617,7 @@ async function runSave(tab, options = {}) {
     return { ok: false, error: 'restricted', message };
   }
 
-  if (!isAllowedUrl(tab.url, settings)) {
+  if (!options.allowUnselected && !isAllowedUrl(tab.url, settings)) {
     const message = errorText(lang, 'notAllowed');
     await sendToast(tabId, { state: 'error', text: message });
     await setBadge(tabId, BADGE_FAIL, '#b42318');
@@ -800,12 +801,17 @@ async function syncContextMenu(settings) {
       title: t(lang, 'menu.savePdf'),
       contexts: ['page']
     });
+    chrome.contextMenus.create({
+      id: PANEL_MENU_ID,
+      title: t(lang, 'menu.openPanel'),
+      contexts: ['action']
+    });
   } catch (error) {
     console.warn('Kunde inte skapa högerklicksmenyn', error);
   }
 
   try {
-    await chrome.action.setTitle({ title: t(lang, 'appName') });
+    await chrome.action.setTitle({ title: t(lang, 'action.savePage') });
   } catch {
     /* ignoreras */
   }
@@ -879,29 +885,36 @@ chrome.storage.onChanged.addListener((changes, area) => {
   if (oldValue?.language !== newValue?.language) void syncContextMenu();
 });
 
+chrome.action.onClicked.addListener((tab) => {
+  if (!tab) return;
+  // Ett klick på verktygsfältsikonen är ett uttryckligt val att spara just den
+  // aktiva sidan, även om domänen inte finns i listan för sidknappen.
+  void handleSaveRequest(tab, { allowUnselected: true });
+});
+
 chrome.commands.onCommand.addListener((command) => {
   if (command !== 'save-pdf' && command !== 'save-pdf-quiet') return;
-  // save-pdf-quiet hoppar över spar-dialogen och lägger filen direkt i
-  // webbläsarens hämtningsmapp.
-  const options = command === 'save-pdf-quiet' ? { forceSaveAs: false } : {};
+  // Snabbkommandon sparar den aktiva sidan; save-pdf-quiet hoppar över
+  // spar-dialogen och lägger filen direkt i webbläsarens hämtningsmapp.
+  const options = {
+    allowUnselected: true,
+    ...(command === 'save-pdf-quiet' ? { forceSaveAs: false } : {})
+  };
   void (async () => {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (!tab) return;
-    const result = await handleSaveRequest(tab, options);
-    if (!result.ok && result.error === 'notAllowed') {
-      // Visa panelen så att användaren kan lägga till webbplatsen.
-      try {
-        await chrome.action.openPopup();
-      } catch {
-        /* openPopup saknas i äldre versioner */
-      }
-    }
+    if (tab) await handleSaveRequest(tab, options);
   })();
 });
 
 chrome.contextMenus.onClicked.addListener((info, tab) => {
-  if (info.menuItemId !== MENU_ID || !tab) return;
-  void handleSaveRequest(tab);
+  if (info.menuItemId === MENU_ID && tab) {
+    void handleSaveRequest(tab);
+    return;
+  }
+  if (info.menuItemId === PANEL_MENU_ID) {
+    const target = typeof tab?.id === 'number' ? `?tabId=${tab.id}` : '';
+    void chrome.tabs.create({ url: `${chrome.runtime.getURL('src/popup.html')}${target}` });
+  }
 });
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {

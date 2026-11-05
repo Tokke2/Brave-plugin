@@ -92,6 +92,23 @@
       <span id="last-saved" class="last-file">–</span>
     </div>
 
+    <section class="update-card" aria-labelledby="update-title">
+      <div class="update-heading">
+        <strong id="update-title" data-i18n="update.title">GitHub-uppdatering</strong>
+        <span id="installed-version" class="muted"></span>
+      </div>
+      <p id="update-status" class="update-status" role="status" aria-live="polite" data-i18n="update.idle">
+        Kontrollera om en ny version finns.
+      </p>
+      <button id="check-updates" class="btn btn-ghost btn-block" type="button" data-i18n="update.check">
+        Sök efter uppdateringar
+      </button>
+      <a id="release-link" class="link release-link" href="#" target="_blank" rel="noopener noreferrer" hidden data-i18n="update.openRelease">
+        Öppna GitHub-releasen
+      </a>
+      <ul id="changed-files" class="changed-files" hidden></ul>
+    </section>
+
     <footer class="popup-footer">
       <span id="shortcut" class="muted"></span>
       <button id="settings-link" class="link" type="button" data-i18n="popup.settings">Inställningar</button>

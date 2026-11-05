@@ -21,6 +21,7 @@ import { resolveLang, applyI18n, t } from './lib/i18n.js';
 import { releaseUnusedOrigin } from './lib/access.js';
 import { buildFilename } from './lib/filename.js';
 import { applyTheme, watchSystemTheme } from './lib/theme.js';
+import { compareVersions, diffFileHashes, gitBlobSha, TRACKED_FILES } from './lib/updates.js';
 
 const FILE_ICON = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
   <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5Z"
@@ -81,6 +82,11 @@ const els = {
   openPdf: document.getElementById('open-pdf'),
   showFolder: document.getElementById('show-folder'),
   lastSaved: document.getElementById('last-saved'),
+  installedVersion: document.getElementById('installed-version'),
+  updateStatus: document.getElementById('update-status'),
+  checkUpdates: document.getElementById('check-updates'),
+  releaseLink: document.getElementById('release-link'),
+  changedFiles: document.getElementById('changed-files'),
   shortcut: document.getElementById('shortcut'),
   openOptions: document.getElementById('open-options'),
   settingsLink: document.getElementById('settings-link')
@@ -96,6 +102,143 @@ const state = {
   allowed: false,
   busy: false
 };
+
+const RELEASE_API_URL = 'https://api.github.com/repos/Tokke2/Brave-plugin/releases/latest';
+const RELEASE_PERMISSION = 'https://api.github.com/*';
+els.installedVersion.textContent = `v${chrome.runtime.getManifest().version}`;
+
+async function compareReleaseFiles(remoteEntries) {
+  const files = new Set(TRACKED_FILES);
+  for (const entry of remoteEntries) {
+    if (entry?.type !== 'blob' || typeof entry.path !== 'string') continue;
+    if (entry.path.startsWith('/') || entry.path.split('/').includes('..')) continue;
+    files.add(entry.path);
+  }
+
+  const localHashes = Object.create(null);
+  await Promise.all(
+    [...files].map(async (path) => {
+      try {
+        const response = await fetch(chrome.runtime.getURL(path));
+        if (!response.ok) return;
+        localHashes[path] = await gitBlobSha(await response.arrayBuffer());
+      } catch {
+        // Missing local file is reported as a difference from the release tree.
+      }
+    })
+  );
+  return diffFileHashes(localHashes, remoteEntries);
+}
+
+function renderChangedFiles(paths) {
+  els.changedFiles.replaceChildren();
+  const visiblePaths = paths.slice(0, 8);
+  for (const path of visiblePaths) {
+    const item = document.createElement('li');
+    item.textContent = path;
+    els.changedFiles.append(item);
+  }
+  if (paths.length > visiblePaths.length) {
+    const item = document.createElement('li');
+    item.textContent = `… +${paths.length - visiblePaths.length}`;
+    els.changedFiles.append(item);
+  }
+  els.changedFiles.hidden = paths.length === 0;
+}
+
+async function checkForUpdates() {
+  els.checkUpdates.disabled = true;
+  els.releaseLink.hidden = true;
+  renderChangedFiles([]);
+  els.updateStatus.textContent = t(state.lang, 'update.checking');
+
+  try {
+    // This optional permission is requested only after the user clicks Check.
+    const granted = await chrome.permissions.request({ origins: [RELEASE_PERMISSION] });
+    if (!granted) {
+      els.updateStatus.textContent = t(state.lang, 'update.permissionDenied');
+      return;
+    }
+
+    const headers = {
+      Accept: 'application/vnd.github+json',
+      'X-GitHub-Api-Version': '2022-11-28'
+    };
+    const response = await fetch(RELEASE_API_URL, { headers });
+    if (response.status === 404) {
+      els.updateStatus.textContent = t(state.lang, 'update.noRelease');
+      return;
+    }
+    if (!response.ok) throw new Error(`GitHub release API returned ${response.status}`);
+
+    const release = await response.json();
+    const latest = String(release.tag_name || '').trim();
+    const commitResponse = await fetch(
+      `https://api.github.com/repos/Tokke2/Brave-plugin/commits/${encodeURIComponent(latest)}`,
+      { headers }
+    );
+    if (!commitResponse.ok) throw new Error(`GitHub commit API returned ${commitResponse.status}`);
+    const commit = await commitResponse.json();
+    const treeSha = commit.commit?.tree?.sha;
+    if (!/^[a-f0-9]{40}$/i.test(treeSha || '')) throw new Error('GitHub returned an invalid tree SHA');
+
+    const treeResponse = await fetch(
+      `https://api.github.com/repos/Tokke2/Brave-plugin/git/trees/${treeSha}?recursive=1`,
+      { headers }
+    );
+    if (!treeResponse.ok) throw new Error(`GitHub tree API returned ${treeResponse.status}`);
+    const tree = await treeResponse.json();
+    if (tree.truncated || !Array.isArray(tree.tree)) throw new Error('GitHub returned an incomplete file tree');
+
+    const remoteEntries = tree.tree.filter(
+      (entry) => entry?.type === 'blob' && typeof entry.path === 'string' && /^[a-f0-9]{40}$/i.test(entry.sha || '')
+    );
+    if (!remoteEntries.some((entry) => entry.path === 'manifest.json')) {
+      throw new Error('Release tree does not contain manifest.json');
+    }
+    const changes = await compareReleaseFiles(remoteEntries);
+    renderChangedFiles(changes);
+
+    const installed = chrome.runtime.getManifest().version;
+    const comparison = compareVersions(latest, installed);
+    if (comparison === null) {
+      els.updateStatus.textContent = t(state.lang, 'update.invalidVersion');
+      return;
+    }
+
+    if (comparison > 0) {
+      els.updateStatus.textContent = t(state.lang, 'update.available', {
+        latest,
+        installed,
+        count: changes.length
+      });
+      const url = new URL(release.html_url || 'https://github.com/Tokke2/Brave-plugin/releases/latest');
+      if (url.origin !== 'https://github.com') throw new Error('Unexpected release URL');
+      els.releaseLink.href = url.href;
+      els.releaseLink.hidden = false;
+    } else if (comparison < 0) {
+      els.updateStatus.textContent = t(state.lang, 'update.installedNewer', {
+        installed,
+        latest,
+        count: changes.length
+      });
+    } else if (changes.length) {
+      els.updateStatus.textContent = t(state.lang, 'update.filesDiffer', {
+        installed,
+        count: changes.length
+      });
+      els.releaseLink.href = release.html_url;
+      els.releaseLink.hidden = false;
+    } else {
+      els.updateStatus.textContent = t(state.lang, 'update.same', { installed });
+    }
+  } catch (error) {
+    console.warn('GitHub release check failed', error);
+    els.updateStatus.textContent = t(state.lang, 'update.error');
+  } finally {
+    els.checkUpdates.disabled = false;
+  }
+}
 
 function basename(path) {
   return String(path || '').split('/').pop();
@@ -300,9 +443,23 @@ async function load({ initial = false } = {}) {
   applyI18n(document, state.lang);
 
   if (initial) {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    const requestedTabId = Number(new URLSearchParams(window.location.search).get('tabId'));
+    let tab = null;
+    if (Number.isInteger(requestedTabId) && requestedTabId > 0) {
+      try {
+        tab = await chrome.tabs.get(requestedTabId);
+      } catch {
+        tab = null;
+      }
+    }
+    if (!tab) {
+      [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    }
     state.tab = tab || null;
     state.url = tab?.url || '';
+    if (new URLSearchParams(window.location.search).has('tabId')) {
+      document.body.classList.add('panel-tab');
+    }
     document.title = t(state.lang, 'appName');
   }
 
@@ -456,6 +613,7 @@ els.secondary.addEventListener('click', () => {
 
 els.openOptions.addEventListener('click', openOptions);
 els.settingsLink.addEventListener('click', openOptions);
+els.checkUpdates.addEventListener('click', () => void checkForUpdates());
 
 onSettingsChanged(() => {
   void (async () => {

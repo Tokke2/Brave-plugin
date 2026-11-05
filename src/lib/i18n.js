@@ -7,8 +7,24 @@ export const STRINGS = {
   sv: {
     appName: 'Sida till PDF',
     appTagline: 'Spara valda sidor som PDF',
+    'action.savePage': 'Klicka för att spara aktuell sida som PDF',
 
     'menu.savePdf': 'Spara sidan som PDF',
+    'menu.openPanel': 'Öppna Sida till PDF-panelen',
+
+    'update.title': 'GitHub-uppdatering',
+    'update.idle': 'Kontrollera om en ny version finns.',
+    'update.check': 'Sök efter uppdateringar',
+    'update.checking': 'Söker efter senaste releasen…',
+    'update.permissionDenied': 'GitHub-åtkomst nekades. Försök igen om du vill söka efter uppdateringar.',
+    'update.noRelease': 'Ingen offentlig GitHub-release finns ännu.',
+    'update.error': 'Kunde inte kontrollera GitHub just nu. Kontrollera nätverket och försök igen.',
+    'update.invalidVersion': 'Release-taggen har inte ett versionsnummer som går att jämföra.',
+    'update.available': 'Nyare version {latest} finns (installerad: {installed}); {count} fil(er) skiljer. Uppdatera manuellt.',
+    'update.filesDiffer': 'Version {installed} matchar releasen, men {count} fil(er) skiljer.',
+    'update.same': 'Du har redan senaste versionen {installed}, och filerna matchar.',
+    'update.installedNewer': 'Installerad version {installed} är nyare än releasen {latest}; {count} fil(er) skiljer.',
+    'update.openRelease': 'Öppna releasen för att hämta ZIP-filen',
 
     'popup.subtitle': 'Valda webbplatser, ett klick',
     'popup.status.selected': 'Vald webbplats',
@@ -164,8 +180,24 @@ export const STRINGS = {
   en: {
     appName: 'Page to PDF',
     appTagline: 'Save selected pages as PDF',
+    'action.savePage': 'Click to save the current page as PDF',
 
     'menu.savePdf': 'Save page as PDF',
+    'menu.openPanel': 'Open the Page to PDF panel',
+
+    'update.title': 'GitHub updates',
+    'update.idle': 'Check whether a newer version is available.',
+    'update.check': 'Check for updates',
+    'update.checking': 'Checking for the latest release…',
+    'update.permissionDenied': 'GitHub access was denied. Try again if you want to check for updates.',
+    'update.noRelease': 'There is no public GitHub release yet.',
+    'update.error': 'Could not check GitHub right now. Check your connection and try again.',
+    'update.invalidVersion': 'The release tag does not contain a comparable version number.',
+    'update.available': 'Version {latest} is newer (installed: {installed}); {count} file(s) differ. Update manually.',
+    'update.filesDiffer': 'Version {installed} matches the release, but {count} file(s) differ.',
+    'update.same': 'You already have the latest version {installed}, and the files match.',
+    'update.installedNewer': 'Installed version {installed} is newer than release {latest}; {count} file(s) differ.',
+    'update.openRelease': 'Open the release to download its ZIP',
 
     'popup.subtitle': 'Selected sites, one click',
     'popup.status.selected': 'Selected site',
