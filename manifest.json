@@ -1,0 +1,61 @@
+{
+  "manifest_version": 3,
+  "name": "Sida till PDF",
+  "short_name": "Sida till PDF",
+  "version": "1.4.0",
+  "description": "Spara sidor från valda webbplatser som PDF med ett klick. / Save pages from selected websites as PDF with one click.",
+  "author": "Rickard Längkvist",
+  "minimum_chrome_version": "116",
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "action": {
+    "default_title": "Sida till PDF",
+    "default_popup": "src/popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "background": {
+    "service_worker": "src/background.js",
+    "type": "module"
+  },
+  "options_ui": {
+    "page": "src/options.html",
+    "open_in_tab": true
+  },
+  "permissions": [
+    "activeTab",
+    "contextMenus",
+    "debugger",
+    "downloads",
+    "offscreen",
+    "scripting",
+    "storage"
+  ],
+  "optional_host_permissions": [
+    "*://*/*"
+  ],
+  "commands": {
+    "save-pdf": {
+      "suggested_key": {
+        "default": "Alt+Shift+P",
+        "mac": "Alt+Shift+P"
+      },
+      "description": "Spara aktuell sida som PDF / Save current page as PDF"
+    },
+    "save-pdf-quiet": {
+      "suggested_key": {
+        "default": "Alt+Shift+O",
+        "mac": "Alt+Shift+O"
+      },
+      "description": "Spara aktuell sida som PDF utan att fråga var filen ska sparas / Save current page as PDF without asking where to save"
+    }
+  }
+}

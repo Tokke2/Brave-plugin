@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="sv">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Artikel</title>
+    <link rel="stylesheet" href="reader.css" />
+  </head>
+  <body>
+    <main class="article">
+      <header class="article-head">
+        <h1 id="reader-title"></h1>
+        <p class="meta">
+          <span id="reader-site"></span>
+          <span aria-hidden="true"> · </span>
+          <time id="reader-date"></time>
+        </p>
+      </header>
+      <div id="reader-content" class="article-body"></div>
+    </main>
+    <script type="module" src="reader.js"></script>
+  </body>
+</html>

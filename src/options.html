@@ -1,0 +1,425 @@
+<!doctype html>
+<html lang="sv">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script src="theme-init.js"></script>
+    <title>Sida till PDF – Inställningar</title>
+    <link rel="stylesheet" href="ui.css" />
+    <link rel="stylesheet" href="options.css" />
+  </head>
+  <body class="options">
+    <div class="page">
+      <header class="page-header">
+        <img class="app-icon" src="../icons/icon128.png" width="44" height="44" alt="" />
+        <div class="header-titles">
+          <h1 data-i18n="options.title">Inställningar</h1>
+          <p class="muted" data-i18n="options.subtitle">
+            Välj vilka webbplatser som får sparas som PDF.
+          </p>
+        </div>
+        <span id="save-flash" class="save-flash" data-i18n="options.general.saved" hidden>Sparat</span>
+      </header>
+
+      <div id="banner" class="banner" role="status" aria-live="polite" hidden></div>
+
+      <section class="card" aria-labelledby="sites-title">
+        <div class="card-head">
+          <div class="card-title">
+            <span class="card-icon" aria-hidden="true">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.7"/>
+                <path d="M3 12h18" stroke="currentColor" stroke-width="1.7"/>
+                <path d="M12 3c2.5 2.4 4 5.6 4 9s-1.5 6.6-4 9c-2.5-2.4-4-5.6-4-9s1.5-6.6 4-9Z" stroke="currentColor" stroke-width="1.7"/>
+              </svg>
+            </span>
+            <h2 id="sites-title" data-i18n="options.sites.title">Valda webbplatser</h2>
+          </div>
+          <span id="site-count" class="pill">–</span>
+        </div>
+        <p class="card-desc" data-i18n="options.sites.desc"></p>
+
+        <form id="add-form" class="add-form" novalidate>
+          <input
+            id="new-pattern"
+            class="input"
+            type="text"
+            autocomplete="off"
+            spellcheck="false"
+            data-i18n-placeholder="options.sites.placeholder"
+            placeholder="t.ex. aftonbladet.se eller *.example.com/nyheter"
+          />
+          <button class="btn btn-primary" type="submit">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/>
+            </svg>
+            <span data-i18n="options.sites.add">Lägg till</span>
+          </button>
+        </form>
+        <p id="site-feedback" class="field-note" role="status" aria-live="polite" hidden></p>
+
+        <ul id="site-list" class="site-list"></ul>
+        <div id="site-empty" class="empty" hidden>
+          <span class="empty-icon" aria-hidden="true">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M3 8a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.6.8l1 1.2H19a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
+              <path d="M12 11v5M9.5 13.5h5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+            </svg>
+          </span>
+          <span data-i18n="options.sites.empty">Inga webbplatser tillagda än. Lägg till en adress ovan.</span>
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="button-title">
+        <div class="card-head">
+          <div class="card-title">
+            <span class="card-icon" aria-hidden="true">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M4.5 3.5 18 9.6l-5.4 1.8-1.8 5.4L4.5 3.5Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
+                <path d="m13.2 13.2 5.3 5.3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+              </svg>
+            </span>
+            <h2 id="button-title" data-i18n="options.button.title">Knapp på sidan</h2>
+          </div>
+        </div>
+        <p class="card-desc" data-i18n="options.button.desc"></p>
+
+        <div class="field">
+          <div class="field-text">
+            <span class="field-label" data-i18n="options.button.show">Visa PDF-knapp på valda sidor</span>
+          </div>
+          <label class="switch">
+            <input id="button-show" type="checkbox" />
+            <span class="track"></span>
+            <span class="sr-only" data-i18n="options.button.show">Visa PDF-knapp på valda sidor</span>
+          </label>
+        </div>
+
+        <div class="field">
+          <div class="field-text">
+            <label class="field-label" for="button-position" data-i18n="options.button.position">Placering</label>
+          </div>
+          <select id="button-position" class="select select-sm">
+            <option value="br" data-i18n="options.button.br">Nere till höger</option>
+            <option value="bl" data-i18n="options.button.bl">Nere till vänster</option>
+            <option value="tr" data-i18n="options.button.tr">Uppe till höger</option>
+            <option value="tl" data-i18n="options.button.tl">Uppe till vänster</option>
+          </select>
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="pdf-title">
+        <div class="card-head">
+          <div class="card-title">
+            <span class="card-icon" aria-hidden="true">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
+                <path d="M14 3v5h5M12 12v6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="m9.3 15.3 2.7 2.7 2.7-2.7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </span>
+            <h2 id="pdf-title" data-i18n="options.pdf.title">PDF-inställningar</h2>
+          </div>
+        </div>
+        <p class="card-desc" data-i18n="options.pdf.desc"></p>
+
+        <div class="grid-2">
+          <div class="field field-column">
+            <label class="field-label" for="pdf-format" data-i18n="options.pdf.format">Pappersformat</label>
+            <select id="pdf-format" class="select">
+              <option value="A4">A4</option>
+              <option value="Letter">Letter</option>
+              <option value="Legal">Legal</option>
+              <option value="A3">A3</option>
+            </select>
+          </div>
+          <div class="field field-column">
+            <label class="field-label" for="pdf-margin" data-i18n="options.pdf.margin">Marginal (mm)</label>
+            <input id="pdf-margin" class="input" type="number" min="0" max="50" step="1" />
+          </div>
+          <div class="field field-column">
+            <label class="field-label" for="pdf-scale" data-i18n="options.pdf.scale">Skala (%)</label>
+            <input id="pdf-scale" class="input" type="number" min="50" max="200" step="5" />
+          </div>
+          <div class="field field-column">
+            <label class="field-label" for="pdf-wait" data-i18n="options.pdf.wait">Väntetid före utskrift (ms)</label>
+            <input id="pdf-wait" class="input" type="number" min="0" max="5000" step="100" />
+            <span class="field-note" data-i18n="options.pdf.waitHint"></span>
+          </div>
+        </div>
+
+        <div class="field">
+          <div class="field-text">
+            <span class="field-label" data-i18n="options.pdf.background">Skriv ut bakgrundsfärger och bilder</span>
+          </div>
+          <label class="switch">
+            <input id="pdf-background" type="checkbox" />
+            <span class="track"></span>
+            <span class="sr-only" data-i18n="options.pdf.background"></span>
+          </label>
+        </div>
+        <div class="field">
+          <div class="field-text">
+            <span class="field-label" data-i18n="options.pdf.header">Sidhuvud och sidofot med sidnummer</span>
+          </div>
+          <label class="switch">
+            <input id="pdf-header" type="checkbox" />
+            <span class="track"></span>
+            <span class="sr-only" data-i18n="options.pdf.header"></span>
+          </label>
+        </div>
+        <div class="field">
+          <div class="field-text">
+            <span class="field-label" data-i18n="options.pdf.cssPage">Följ sidans egen utskriftsstorlek (CSS @page)</span>
+          </div>
+          <label class="switch">
+            <input id="pdf-css-page" type="checkbox" />
+            <span class="track"></span>
+            <span class="sr-only" data-i18n="options.pdf.cssPage"></span>
+          </label>
+        </div>
+
+        <div class="field">
+          <div class="field-text">
+            <span class="field-label" data-i18n="options.pdf.reader">Artikelläge – spara bara artikelns text</span>
+            <span class="field-note" data-i18n="options.pdf.readerHint"></span>
+          </div>
+          <label class="switch">
+            <input id="pdf-reader" type="checkbox" />
+            <span class="track"></span>
+            <span class="sr-only" data-i18n="options.pdf.reader"></span>
+          </label>
+        </div>
+
+        <div class="field">
+          <div class="field-text">
+            <span class="field-label" data-i18n="options.pdf.autoScale">Autoskala breda sidor</span>
+            <span class="field-note" data-i18n="options.pdf.autoScaleHint"></span>
+          </div>
+          <label class="switch">
+            <input id="pdf-auto-scale" type="checkbox" />
+            <span class="track"></span>
+            <span class="sr-only" data-i18n="options.pdf.autoScale"></span>
+          </label>
+        </div>
+
+        <div class="field">
+          <div class="field-text">
+            <span class="field-label" data-i18n="options.pdf.dark">Mörk utskrift (ljus text på mörk bakgrund)</span>
+          </div>
+          <label class="switch">
+            <input id="pdf-dark" type="checkbox" />
+            <span class="track"></span>
+            <span class="sr-only" data-i18n="options.pdf.dark"></span>
+          </label>
+        </div>
+
+        <div class="field">
+          <div class="field-text">
+            <span class="field-label" data-i18n="options.pdf.footerTitle">Sidfot: sidans titel</span>
+            <span class="field-note" data-i18n="options.pdf.footerHint"></span>
+          </div>
+          <label class="switch">
+            <input id="pdf-footer-title" type="checkbox" />
+            <span class="track"></span>
+            <span class="sr-only" data-i18n="options.pdf.footerTitle"></span>
+          </label>
+        </div>
+
+        <div class="field">
+          <div class="field-text">
+            <span class="field-label" data-i18n="options.pdf.footerUrl">Sidfot: webbadress</span>
+          </div>
+          <label class="switch">
+            <input id="pdf-footer-url" type="checkbox" />
+            <span class="track"></span>
+            <span class="sr-only" data-i18n="options.pdf.footerUrl"></span>
+          </label>
+        </div>
+
+        <div class="field">
+          <div class="field-text">
+            <span class="field-label" data-i18n="options.pdf.footerDate">Sidfot: datum</span>
+          </div>
+          <label class="switch">
+            <input id="pdf-footer-date" type="checkbox" />
+            <span class="track"></span>
+            <span class="sr-only" data-i18n="options.pdf.footerDate"></span>
+          </label>
+        </div>
+
+        <div class="card-actions">
+          <button id="reset-pdf" class="btn btn-ghost btn-sm" type="button">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M3.5 12a8.5 8.5 0 1 0 2.6-6.1" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+              <path d="M3.5 4.6V10H9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <span data-i18n="options.pdf.reset">Återställ PDF-inställningar</span>
+          </button>
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="file-title">
+        <div class="card-head">
+          <div class="card-title">
+            <span class="card-icon" aria-hidden="true">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M3 8a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.6.8l1 1.2H19a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
+              </svg>
+            </span>
+            <h2 id="file-title" data-i18n="options.file.title">Filnamn och sparplats</h2>
+          </div>
+        </div>
+        <p class="card-desc" data-i18n="options.file.desc"></p>
+
+        <div class="grid-2">
+          <div class="field field-column">
+            <label class="field-label" for="file-folder" data-i18n="options.file.folder">Underkatalog</label>
+            <input id="file-folder" class="input" type="text" spellcheck="false" />
+          </div>
+          <div class="field field-column">
+            <label class="field-label" for="file-template" data-i18n="options.file.template">Filnamnsmall</label>
+            <input id="file-template" class="input" type="text" spellcheck="false" />
+            <span class="field-note" data-i18n="options.file.templateHint"></span>
+          </div>
+        </div>
+
+        <div class="preview" aria-live="polite">
+          <span class="preview-label" data-i18n="options.file.preview">Exempel</span>
+          <code id="file-preview">Sidor/example.com/Exempel på sidtitel.pdf</code>
+        </div>
+
+        <div class="field">
+          <div class="field-text">
+            <span class="field-label" data-i18n="options.file.perSiteFolder">Egen undermapp per webbplats</span>
+          </div>
+          <label class="switch">
+            <input id="file-per-site" type="checkbox" />
+            <span class="track"></span>
+            <span class="sr-only" data-i18n="options.file.perSiteFolder"></span>
+          </label>
+        </div>
+        <div class="field">
+          <div class="field-text">
+            <span class="field-label" data-i18n="options.file.saveAs">Fråga var filen ska sparas varje gång</span>
+            <span id="save-as-hint" class="field-note"></span>
+          </div>
+          <label class="switch">
+            <input id="file-save-as" type="checkbox" />
+            <span class="track"></span>
+            <span class="sr-only" data-i18n="options.file.saveAs"></span>
+          </label>
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="general-title">
+        <div class="card-head">
+          <div class="card-title">
+            <span class="card-icon" aria-hidden="true">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M4 8h7M15 8h5M4 16h3M11 16h9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+                <circle cx="13" cy="8" r="2" stroke="currentColor" stroke-width="1.7"/>
+                <circle cx="9" cy="16" r="2" stroke="currentColor" stroke-width="1.7"/>
+              </svg>
+            </span>
+            <h2 id="general-title" data-i18n="options.general.title">Allmänt</h2>
+          </div>
+        </div>
+
+        <div class="field">
+          <div class="field-text">
+            <label class="field-label" for="theme" data-i18n="options.general.theme">Tema</label>
+          </div>
+          <select id="theme" class="select select-sm">
+            <option value="auto" data-i18n="options.general.themeAuto">Automatiskt</option>
+            <option value="light" data-i18n="options.general.themeLight">Ljust</option>
+            <option value="dark" data-i18n="options.general.themeDark">Mörkt</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <div class="field-text">
+            <label class="field-label" for="language" data-i18n="options.general.language">Språk</label>
+          </div>
+          <select id="language" class="select select-sm">
+            <option value="auto" data-i18n="options.general.languageAuto">Automatisk</option>
+            <option value="sv" data-i18n="options.general.languageSv">Svenska</option>
+            <option value="en" data-i18n="options.general.languageEn">English</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <div class="field-text">
+            <span class="field-label" data-i18n="options.general.allowAll">Tillåt alla webbplatser</span>
+            <span class="field-note" data-i18n="options.general.allowAllHint"></span>
+          </div>
+          <label class="switch">
+            <input id="allow-all" type="checkbox" />
+            <span class="track"></span>
+            <span class="sr-only" data-i18n="options.general.allowAll"></span>
+          </label>
+        </div>
+
+        <div class="field">
+          <div class="field-text">
+            <span class="field-label" data-i18n="options.general.shortcut">Snabbtangent</span>
+            <span id="shortcut-value" class="field-note"></span>
+            <span class="field-note" data-i18n="options.general.shortcutHint"></span>
+          </div>
+          <div class="field-actions">
+            <button id="shortcut-button" class="btn btn-secondary btn-sm" type="button">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <rect x="2.6" y="6" width="18.8" height="12" rx="2.6" stroke="currentColor" stroke-width="1.7"/>
+                <path d="M6.5 10h.01M10 10h.01M13.5 10h.01M17 10h.01M6.5 13.2h.01M10 13.2h.01M13.5 13.2h.01M17 13.2h.01" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+                <path d="M8 16.2h8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+              </svg>
+              <span data-i18n="options.general.shortcutChange">Ändra snabbtangent</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="field">
+          <div class="field-text">
+            <span class="field-label" data-i18n="options.general.data">Inställningsfil</span>
+          </div>
+          <div class="field-actions">
+            <button id="export-button" class="btn btn-secondary btn-sm" type="button">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M12 3v11m0 0 4-4m-4 4-4-4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+              </svg>
+              <span data-i18n="options.general.export">Exportera</span>
+            </button>
+            <button id="import-button" class="btn btn-secondary btn-sm" type="button">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M12 15V4m0 0 4 4m-4-4L8 8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+              </svg>
+              <span data-i18n="options.general.import">Importera</span>
+            </button>
+            <input id="import-file" type="file" accept="application/json,.json" hidden />
+          </div>
+        </div>
+
+        <div class="card-actions">
+          <button id="reset-all" class="btn btn-danger btn-sm" type="button">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M3.5 12a8.5 8.5 0 1 0 2.6-6.1" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+              <path d="M3.5 4.6V10H9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <span data-i18n="options.general.reset">Återställ allt</span>
+          </button>
+        </div>
+      </section>
+
+      <footer class="page-footer">
+        <p class="muted" data-i18n="options.footer.note">
+          PDF:er skapas lokalt i webbläsaren. Inga sidor skickas någonstans.
+        </p>
+        <p class="muted">Sida till PDF · v1.4.0</p>
+      </footer>
+    </div>
+
+    <script type="module" src="options.js"></script>
+  </body>
+</html>
