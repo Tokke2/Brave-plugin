@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Sida till PDF",
   "short_name": "Sida till PDF",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Spara sidor från valda webbplatser som PDF med ett klick. / Save pages from selected websites as PDF with one click.",
   "author": "Rickard Längkvist",
   "minimum_chrome_version": "116",

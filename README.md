@@ -45,18 +45,18 @@ Tillägget distribueras som källkod från GitHub och installeras som **opackat*
 
 I Chrome gör du samma sak på `chrome://extensions`.
 
-Efter installationen öppnas inställningssidan automatiskt. Där lägger du till de webbplatser som ska få den flytande sidknappen. Klick på ikonen i verktygsfältet sparar däremot alltid den aktuella vanliga webbsidan direkt; högerklicka på ikonen och välj **Öppna Sida till PDF-panelen** för status, historik och inställningar.
+Efter installationen öppnas inställningssidan automatiskt. Där lägger du till de webbplatser som ska få den flytande sidknappen. Klick på ikonen i verktygsfältet sparar däremot alltid den aktuella vanliga webbsidan direkt. Högerklicka på ikonen för att öppna panelen eller söka efter GitHub-uppdateringar.
 
 ### Uppdatera manuellt
 
-1. Högerklicka på tilläggsikonen, öppna panelen och välj **Sök efter uppdateringar**. Kontrollern jämför versionsnumret och Git-blob-hasharna för filerna i den installerade projektmappen mot GitHubs senaste publicerade release. Den visar ändrade/tillagda/borttagna filer men installerar ingenting automatiskt.
+1. Högerklicka på tilläggsikonen och välj **Sök efter GitHub-uppdateringar**. Panelen öppnas och jämför versionsnumret och Git-blob-hasharna för filerna i den installerade projektmappen mot GitHubs senaste publicerade release. Den visar ändrade/tillagda/borttagna filer men kan inte skriva över tilläggets egna filer automatiskt.
 2. Om en nyare version finns, öppna releasen via länken och hämta dess **Source code (zip)**.
 3. Packa upp ZIP-filen och kopiera de nya filerna till **samma mapp** som du ursprungligen valde i **Läs in opackat**, så att gamla filer ersätts.
-4. Öppna `brave://extensions` (eller `chrome://extensions` i Chrome) och klicka på tilläggets **Läs in igen**-ikon.
+4. Högerklicka på tilläggsikonen och välj **Läs in uppdaterade filer från mappen**. Det laddar om tillägget från samma mapp. Alternativt kan du klicka på **Läs in igen** på `brave://extensions` eller `chrome://extensions`.
 
 Den första kontrollen ber om åtkomst till GitHubs publika releaseinformation (`api.github.com`). Ingen siddata skickas. Att behålla samma mapp och inte ta bort tillägget hjälper till att behålla dess lokala inställningar. Om du flyttar eller tar bort mappen behöver du läsa in tillägget från den nya platsen.
 
-Varje release behöver en GitHub-tagg som motsvarar versionen i `manifest.json`, exempelvis `v0.0.1`. Uppdateringssökningen jämför versionsnumret och Git-blob-hasharna för projektfilerna.
+Varje release behöver en GitHub-tagg som motsvarar versionen i `manifest.json`, exempelvis `v0.0.2`. Uppdateringssökningen jämför versionsnumret och Git-blob-hasharna för projektfilerna.
 
 ---
 
@@ -199,7 +199,7 @@ npm test        # tester för mönster, filnamn, utskrift, tema och översättni
 npm run check   # syntaxkontroll av alla skript
 ```
 
-Aktuell version: **0.0.1**.
+Aktuell version: **0.0.2**.
 
 Se **[FORBATTRINGAR.md](FORBATTRINGAR.md)** för 25 förslag på förbättringar inom
 funktion, design, tema, typografi och kod – nio av dem är genomförda i 1.4.0.

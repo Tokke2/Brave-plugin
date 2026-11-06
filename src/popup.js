@@ -146,15 +146,18 @@ function renderChangedFiles(paths) {
   els.changedFiles.hidden = paths.length === 0;
 }
 
-async function checkForUpdates() {
+async function checkForUpdates({ requestPermission = true } = {}) {
   els.checkUpdates.disabled = true;
   els.releaseLink.hidden = true;
   renderChangedFiles([]);
   els.updateStatus.textContent = t(state.lang, 'update.checking');
 
   try {
-    // This optional permission is requested only after the user clicks Check.
-    const granted = await chrome.permissions.request({ origins: [RELEASE_PERMISSION] });
+    // The toolbar context-menu route requests permission before opening this tab;
+    // the panel button requests it directly from its own click gesture.
+    const granted = requestPermission
+      ? await chrome.permissions.request({ origins: [RELEASE_PERMISSION] })
+      : await chrome.permissions.contains({ origins: [RELEASE_PERMISSION] });
     if (!granted) {
       els.updateStatus.textContent = t(state.lang, 'update.permissionDenied');
       return;
@@ -630,4 +633,8 @@ watchSystemTheme(() => {
   if (normalizeTheme(state.settings?.theme) === 'auto') applyTheme('auto');
 });
 
-void load({ initial: true });
+void load({ initial: true }).then(() => {
+  if (new URLSearchParams(window.location.search).get('checkUpdates') === '1') {
+    void checkForUpdates({ requestPermission: false });
+  }
+});

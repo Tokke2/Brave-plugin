@@ -11,6 +11,8 @@ export const STRINGS = {
 
     'menu.savePdf': 'Spara sidan som PDF',
     'menu.openPanel': 'Öppna Sida till PDF-panelen',
+    'menu.checkUpdates': 'Sök efter GitHub-uppdateringar',
+    'menu.reloadUpdatedFiles': 'Läs in uppdaterade filer från mappen',
 
     'update.title': 'GitHub-uppdatering',
     'update.idle': 'Kontrollera om en ny version finns.',
@@ -184,6 +186,8 @@ export const STRINGS = {
 
     'menu.savePdf': 'Save page as PDF',
     'menu.openPanel': 'Open the Page to PDF panel',
+    'menu.checkUpdates': 'Check for GitHub updates',
+    'menu.reloadUpdatedFiles': 'Reload updated files from folder',
 
     'update.title': 'GitHub updates',
     'update.idle': 'Check whether a newer version is available.',

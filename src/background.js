@@ -23,6 +23,9 @@ const CONTENT_SCRIPT_ID = 'site-pdf-button';
 const CONTENT_FILES = ['src/content.js'];
 const MENU_ID = 'page-to-pdf-save';
 const PANEL_MENU_ID = 'page-to-pdf-open-panel';
+const UPDATE_MENU_ID = 'page-to-pdf-check-updates';
+const RELOAD_MENU_ID = 'page-to-pdf-reload';
+const UPDATE_API_PERMISSION = 'https://api.github.com/*';
 const BADGE_BUSY = '…';
 const BADGE_OK = '✓';
 const BADGE_FAIL = '!';
@@ -806,6 +809,16 @@ async function syncContextMenu(settings) {
       title: t(lang, 'menu.openPanel'),
       contexts: ['action']
     });
+    chrome.contextMenus.create({
+      id: UPDATE_MENU_ID,
+      title: t(lang, 'menu.checkUpdates'),
+      contexts: ['action']
+    });
+    chrome.contextMenus.create({
+      id: RELOAD_MENU_ID,
+      title: t(lang, 'menu.reloadUpdatedFiles'),
+      contexts: ['action']
+    });
   } catch (error) {
     console.warn('Kunde inte skapa högerklicksmenyn', error);
   }
@@ -906,14 +919,40 @@ chrome.commands.onCommand.addListener((command) => {
   })();
 });
 
+function openPanelTab(tab, { checkUpdates = false } = {}) {
+  const params = new URLSearchParams();
+  if (typeof tab?.id === 'number') params.set('tabId', String(tab.id));
+  if (checkUpdates) params.set('checkUpdates', '1');
+  const query = params.toString();
+  return chrome.tabs.create({
+    url: `${chrome.runtime.getURL('src/popup.html')}${query ? `?${query}` : ''}`
+  });
+}
+
 chrome.contextMenus.onClicked.addListener((info, tab) => {
   if (info.menuItemId === MENU_ID && tab) {
     void handleSaveRequest(tab);
     return;
   }
   if (info.menuItemId === PANEL_MENU_ID) {
-    const target = typeof tab?.id === 'number' ? `?tabId=${tab.id}` : '';
-    void chrome.tabs.create({ url: `${chrome.runtime.getURL('src/popup.html')}${target}` });
+    void openPanelTab(tab);
+    return;
+  }
+  if (info.menuItemId === RELOAD_MENU_ID) {
+    // Reloads the extension from its existing unpacked folder; it does not download files.
+    chrome.runtime.reload();
+    return;
+  }
+  if (info.menuItemId === UPDATE_MENU_ID) {
+    void (async () => {
+      try {
+        // Ask at the context-menu user gesture; the panel checks automatically after it opens.
+        await chrome.permissions.request({ origins: [UPDATE_API_PERMISSION] });
+      } catch {
+        /* Panel will display the permission state and let the user retry. */
+      }
+      await openPanelTab(tab, { checkUpdates: true });
+    })();
   }
 });
 
