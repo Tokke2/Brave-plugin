@@ -21,50 +21,19 @@ import { resolveLang, applyI18n, t } from './lib/i18n.js';
 import { releaseUnusedOrigin } from './lib/access.js';
 import { buildFilename } from './lib/filename.js';
 import { applyTheme, watchSystemTheme } from './lib/theme.js';
+import { normalizePageRanges } from './lib/print.js';
 import { compareVersions, diffFileHashes, gitBlobSha, TRACKED_FILES } from './lib/updates.js';
 
-const FILE_ICON = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-  <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5Z"
-    stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
-  <path d="M14 3v5h5M12 12v6" stroke="currentColor" stroke-width="1.7"
-    stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="m9.3 15.3 2.7 2.7 2.7-2.7" stroke="currentColor" stroke-width="1.7"
-    stroke-linecap="round" stroke-linejoin="round"/>
-</svg>`;
-
-const PLUS_ICON = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-  <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/>
-</svg>`;
-
-const TRASH_ICON = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-  <path d="M4 7h16M9.5 7V5.2c0-.7.5-1.2 1.2-1.2h2.6c.7 0 1.2.5 1.2 1.2V7"
-    stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M6.5 7l.8 11.3c.05.7.6 1.2 1.3 1.2h6.8c.7 0 1.25-.5 1.3-1.2L17.5 7"
-    stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
-</svg>`;
-
-const CHECK_ICON = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-  <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.7"/>
-  <path d="m8 12.3 2.6 2.6L16 9.5" stroke="currentColor" stroke-width="1.7"
-    stroke-linecap="round" stroke-linejoin="round"/>
-</svg>`;
-
+window.SidaPdfIcons.hydrate(document);
+const { icon: iconSvg } = window.SidaPdfIcons;
+const FILE_ICON = iconSvg('fileDown', 16);
+const PLUS_ICON = iconSvg('plus', 16);
+const TRASH_ICON = iconSvg('trash', 14);
+const CHECK_ICON = iconSvg('checkCircle', 14);
 const BANNER_ICONS = {
-  ok: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-    <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/>
-    <path d="m8 12.3 2.6 2.6L16 9.5" stroke="currentColor" stroke-width="1.8"
-      stroke-linecap="round" stroke-linejoin="round"/>
-  </svg>`,
-  error: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-    <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/>
-    <path d="M12 7.5v5.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-    <circle cx="12" cy="16.6" r="1.05" fill="currentColor"/>
-  </svg>`,
-  info: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-    <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/>
-    <path d="M12 11v5.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-    <circle cx="12" cy="7.6" r="1.05" fill="currentColor"/>
-  </svg>`
+  ok: iconSvg('checkCircle', 14),
+  error: iconSvg('alert', 14),
+  info: iconSvg('info', 14)
 };
 
 const els = {
@@ -75,6 +44,7 @@ const els = {
   banner: document.getElementById('banner'),
   primary: document.getElementById('primary'),
   secondary: document.getElementById('secondary'),
+  pageRanges: document.getElementById('page-ranges'),
   saveAs: document.getElementById('save-as'),
   saveAsNote: document.getElementById('save-as-note'),
   filenamePreview: document.getElementById('filename-preview'),
@@ -257,8 +227,6 @@ function previewFilename() {
     const host = new URL(state.url).hostname.replace(/^www\./, '') || 'webbplats';
     return buildFilename({
       template: state.settings.file.template,
-      folder: state.settings.file.folder,
-      perSiteFolder: state.settings.file.perSiteFolder,
       site: host,
       title: state.tab?.title || host,
       date: new Date()
@@ -475,6 +443,11 @@ async function load({ initial = false } = {}) {
 
 async function savePdf() {
   if (state.busy || !state.allowed) return;
+  const pageRanges = normalizePageRanges(els.pageRanges.value);
+  if (pageRanges === null) {
+    setBanner('error', t(state.lang, 'errors.pageRangeInvalid'));
+    return;
+  }
   state.busy = true;
   setPrimary({ loading: true, label: t(state.lang, 'popup.saving'), disabled: true });
   els.secondary.disabled = true;
@@ -483,11 +456,14 @@ async function savePdf() {
     const response = await chrome.runtime.sendMessage({
       type: 'SAVE_PDF',
       tabId: state.tab?.id,
-      url: state.url
+      url: state.url,
+      pageRanges
     });
 
     if (response?.ok) {
-      if (response.readerFallback) {
+      if (response.autoOpenFailed) {
+        setBanner('info', t(state.lang, 'popup.autoOpenBlocked'));
+      } else if (response.readerFallback) {
         setBanner('info', t(state.lang, 'popup.readerFallback'));
       } else {
         setBanner('ok', `${t(state.lang, 'popup.saved')} · ${basename(response.filename)}`);
@@ -514,6 +490,10 @@ async function savePdf() {
 async function addSiteAndSave() {
   const pattern = suggestedPattern();
   if (!pattern || state.busy) return;
+  if (normalizePageRanges(els.pageRanges.value) === null) {
+    setBanner('error', t(state.lang, 'errors.pageRangeInvalid'));
+    return;
+  }
 
   state.busy = true;
   setPrimary({ loading: true, label: t(state.lang, 'popup.saving'), disabled: true });

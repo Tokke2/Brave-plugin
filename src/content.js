@@ -11,34 +11,13 @@
   window.__pageToPdfInjected = true;
 
   const HOST_ID = 'page-to-pdf-host';
-
-  const FILE_ICON = `
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-        <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5Z"
-              stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
-        <path d="M14 3v5h5M12 12v6" stroke="currentColor" stroke-width="1.7"
-              stroke-linecap="round" stroke-linejoin="round"/>
-        <path d="m9.3 15.3 2.7 2.7 2.7-2.7" stroke="currentColor" stroke-width="1.7"
-              stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>`;
-
+  const iconSvg = globalThis.SidaPdfIcons.icon;
+  const FILE_ICON = iconSvg('fileDown', 16);
   const TOAST_ICONS = {
     saving: '<span class="spinner"></span>',
-    saved: `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-        <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/>
-        <path d="m8 12.3 2.6 2.6L16 9.5" stroke="currentColor" stroke-width="1.8"
-              stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>`,
-    error: `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-        <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/>
-        <path d="M12 7.5v5.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-        <circle cx="12" cy="16.6" r="1.05" fill="currentColor"/>
-      </svg>`,
-    info: `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-        <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/>
-        <path d="M12 11v5.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-        <circle cx="12" cy="7.6" r="1.05" fill="currentColor"/>
-      </svg>`
+    saved: iconSvg('checkCircle', 15),
+    error: iconSvg('alert', 15),
+    info: iconSvg('info', 15)
   };
   const POSITIONS = {
     br: { bottom: '20px', right: '20px' },

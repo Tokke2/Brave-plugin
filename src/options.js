@@ -18,8 +18,12 @@ import { buildFilename } from './lib/filename.js';
 import { releaseUnusedOrigin } from './lib/access.js';
 import { applyTheme, watchSystemTheme } from './lib/theme.js';
 
+window.SidaPdfIcons.hydrate(document);
+const { icon: iconSvg } = window.SidaPdfIcons;
+
 const els = {
   banner: document.getElementById('banner'),
+  appVersion: document.getElementById('app-version'),
   saveFlash: document.getElementById('save-flash'),
   siteCount: document.getElementById('site-count'),
   addForm: document.getElementById('add-form'),
@@ -29,24 +33,22 @@ const els = {
   siteEmpty: document.getElementById('site-empty'),
   buttonShow: document.getElementById('button-show'),
   buttonPosition: document.getElementById('button-position'),
-  pdfFormat: document.getElementById('pdf-format'),
   pdfMargin: document.getElementById('pdf-margin'),
   pdfScale: document.getElementById('pdf-scale'),
   pdfWait: document.getElementById('pdf-wait'),
   pdfBackground: document.getElementById('pdf-background'),
   pdfHeader: document.getElementById('pdf-header'),
-  pdfCssPage: document.getElementById('pdf-css-page'),
   pdfReader: document.getElementById('pdf-reader'),
-  pdfAutoScale: document.getElementById('pdf-auto-scale'),
   pdfDark: document.getElementById('pdf-dark'),
+  pdfWatermark: document.getElementById('pdf-watermark'),
+  pdfOptimizeImages: document.getElementById('pdf-optimize-images'),
+  pdfOpenAfterSave: document.getElementById('pdf-open-after-save'),
   pdfFooterTitle: document.getElementById('pdf-footer-title'),
   pdfFooterUrl: document.getElementById('pdf-footer-url'),
   pdfFooterDate: document.getElementById('pdf-footer-date'),
   resetPdf: document.getElementById('reset-pdf'),
-  fileFolder: document.getElementById('file-folder'),
   fileTemplate: document.getElementById('file-template'),
   filePreview: document.getElementById('file-preview'),
-  filePerSite: document.getElementById('file-per-site'),
   fileSaveAs: document.getElementById('file-save-as'),
   saveAsHint: document.getElementById('save-as-hint'),
   theme: document.getElementById('theme'),
@@ -59,6 +61,8 @@ const els = {
   importFile: document.getElementById('import-file'),
   resetAll: document.getElementById('reset-all')
 };
+
+els.appVersion.textContent = `v${chrome.runtime.getManifest().version}`;
 
 const state = {
   settings: null,
@@ -173,23 +177,21 @@ function renderAll() {
   els.buttonShow.checked = settings.button.show;
   els.buttonPosition.value = settings.button.position;
 
-  els.pdfFormat.value = settings.pdf.format;
   els.pdfMargin.value = String(settings.pdf.marginMm);
   els.pdfScale.value = String(Math.round(settings.pdf.scale * 100));
   els.pdfWait.value = String(settings.pdf.waitMs);
   els.pdfBackground.checked = settings.pdf.printBackground;
   els.pdfHeader.checked = settings.pdf.headerFooter;
-  els.pdfCssPage.checked = settings.pdf.preferCssPageSize;
   els.pdfReader.checked = settings.pdf.reader;
-  els.pdfAutoScale.checked = settings.pdf.autoScale;
   els.pdfDark.checked = settings.pdf.darkMode;
+  els.pdfWatermark.value = settings.pdf.watermark;
+  els.pdfOptimizeImages.checked = settings.pdf.optimizeImages;
+  els.pdfOpenAfterSave.checked = settings.pdf.openAfterSave;
   els.pdfFooterTitle.checked = settings.pdf.footerTitle;
   els.pdfFooterUrl.checked = settings.pdf.footerUrl;
   els.pdfFooterDate.checked = settings.pdf.footerDate;
 
-  els.fileFolder.value = settings.file.folder;
   els.fileTemplate.value = settings.file.template;
-  els.filePerSite.checked = settings.file.perSiteFolder;
   els.fileSaveAs.checked = settings.file.saveAs;
   els.saveAsHint.textContent = t(
     state.lang,
@@ -253,12 +255,7 @@ function renderSites() {
       const grantIcon = document.createElement('span');
       grantIcon.className = 'grant-icon';
       grantIcon.setAttribute('aria-hidden', 'true');
-      grantIcon.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none">
-        <path d="M12 3.2l7 2.9v5.4c0 4.2-2.9 7.4-7 9.3-4.1-1.9-7-5.1-7-9.3V6.1l7-2.9Z"
-          stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
-        <path d="m9.2 12 2 2 3.6-3.6" stroke="currentColor" stroke-width="1.8"
-          stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>`;
+      grantIcon.innerHTML = iconSvg('shield', 12);
 
       grant.append(grantIcon, document.createTextNode(t(lang, 'options.sites.grant')));
       meta.appendChild(grant);
@@ -296,9 +293,7 @@ function renderSites() {
     remove.dataset.action = 'remove';
     remove.title = t(lang, 'options.sites.remove');
     remove.setAttribute('aria-label', `${t(lang, 'options.sites.remove')}: ${site.pattern}`);
-    remove.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M4 7h16M9 7V5h6v2m-8 0 1 12h8l1-12" stroke="currentColor" stroke-width="1.6"
-        stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+    remove.innerHTML = iconSvg('trash', 16);
 
     actions.append(toggle, remove);
     row.append(main, actions);
@@ -310,8 +305,6 @@ function renderPreview() {
   const { settings, lang } = state;
   const sample = buildFilename({
     template: settings.file.template,
-    folder: settings.file.folder,
-    perSiteFolder: settings.file.perSiteFolder,
     site: 'example.com',
     title: t(lang, 'options.file.sampleTitle'),
     date: new Date()
@@ -435,12 +428,6 @@ els.buttonPosition.addEventListener('change', () => {
   });
 });
 
-els.pdfFormat.addEventListener('change', () => {
-  void persist((draft) => {
-    draft.pdf.format = els.pdfFormat.value;
-  });
-});
-
 els.pdfMargin.addEventListener('change', () => {
   void persist((draft) => {
     draft.pdf.marginMm = els.pdfMargin.value;
@@ -471,27 +458,33 @@ els.pdfHeader.addEventListener('change', () => {
   });
 });
 
-els.pdfCssPage.addEventListener('change', () => {
-  void persist((draft) => {
-    draft.pdf.preferCssPageSize = els.pdfCssPage.checked;
-  });
-});
-
 els.pdfReader.addEventListener('change', () => {
   void persist((draft) => {
     draft.pdf.reader = els.pdfReader.checked;
   });
 });
 
-els.pdfAutoScale.addEventListener('change', () => {
-  void persist((draft) => {
-    draft.pdf.autoScale = els.pdfAutoScale.checked;
-  });
-});
-
 els.pdfDark.addEventListener('change', () => {
   void persist((draft) => {
     draft.pdf.darkMode = els.pdfDark.checked;
+  });
+});
+
+els.pdfWatermark.addEventListener('change', () => {
+  void persist((draft) => {
+    draft.pdf.watermark = els.pdfWatermark.value;
+  });
+});
+
+els.pdfOptimizeImages.addEventListener('change', () => {
+  void persist((draft) => {
+    draft.pdf.optimizeImages = els.pdfOptimizeImages.checked;
+  });
+});
+
+els.pdfOpenAfterSave.addEventListener('change', () => {
+  void persist((draft) => {
+    draft.pdf.openAfterSave = els.pdfOpenAfterSave.checked;
   });
 });
 
@@ -519,21 +512,9 @@ els.resetPdf.addEventListener('click', () => {
   });
 });
 
-els.fileFolder.addEventListener('change', () => {
-  void persist((draft) => {
-    draft.file.folder = els.fileFolder.value;
-  });
-});
-
 els.fileTemplate.addEventListener('change', () => {
   void persist((draft) => {
     draft.file.template = els.fileTemplate.value;
-  });
-});
-
-els.filePerSite.addEventListener('change', () => {
-  void persist((draft) => {
-    draft.file.perSiteFolder = els.filePerSite.checked;
   });
 });
 
