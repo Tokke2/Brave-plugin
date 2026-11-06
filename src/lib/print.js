@@ -4,25 +4,62 @@
  */
 
 export const PAPER_SIZES = {
-  A4: [8.27, 11.69],
-  Letter: [8.5, 11],
-  Legal: [8.5, 14],
-  A3: [11.69, 16.54]
+  A4: [8.27, 11.69]
 };
 
 /** Minsta marginal (tum) när en sidofot skrivs ut. */
 const FOOTER_MARGIN = 0.6;
 
-/** Minsta skala som autoskalan får krympa till. */
-const MIN_AUTO_SCALE = 0.45;
+/** Lägsta utskriftsskala som stöds av Chromium. */
+const MIN_AUTO_SCALE = 0.1;
+
+/** Validate and normalize Chromium's comma-separated PDF page-range syntax. */
+export function normalizePageRanges(value) {
+  const ranges = String(value ?? '').trim();
+  if (!ranges) return '';
+  if (ranges.length > 200 || !/^\d+(?:\s*-\s*\d+)?(?:\s*,\s*\d+(?:\s*-\s*\d+)?)*$/.test(ranges)) {
+    return null;
+  }
+  const normalized = ranges.split(',').map((part) => {
+    const [startText, endText] = part.split('-').map((item) => item.trim());
+    const start = Number(startText);
+    const end = endText === undefined ? start : Number(endText);
+    if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end) || start < 1 || end < start) return null;
+    return start === end ? String(start) : `${start}-${end}`;
+  });
+  return normalized.some((range) => range === null) ? null : normalized.join(',');
+}
+
+export const MIXED_ORIENTATION_CSS = `
+  @page { size: A4 portrait; }
+  @page stp-landscape { size: A4 landscape; }
+  @media print {
+    .__stp-landscape-zone { page: stp-landscape !important; }
+  }
+`;
+
+export const PRINT_FRIENDLY_CSS = `
+  @media print {
+    h1, h2, h3, h4, h5, h6 { break-after: avoid-page; page-break-after: avoid; }
+    figure, figcaption, blockquote, pre, img, svg, canvas,
+    tr, .card, .panel, [data-print-keep-together] {
+      break-inside: avoid-page; page-break-inside: avoid;
+    }
+    thead { display: table-header-group; }
+    tfoot { display: table-footer-group; }
+    img, svg, canvas { max-width: 100% !important; }
+    p, li { orphans: 3; widows: 3; }
+  }
+`;
 
 export function mmToInch(mm) {
   return Number((Number(mm) / 25.4).toFixed(4));
 }
 
 /** Pappersbredd i CSS-pixlar (96 dpi) minus marginaler – vid skala 1. */
-export function paperWidthCssPx(pdf) {
-  const [width] = PAPER_SIZES[pdf?.format] || PAPER_SIZES.A4;
+export function paperWidthCssPx(pdf, orientation = 'portrait') {
+  const [shortSide, longSide] = PAPER_SIZES.A4;
+  const width = orientation === 'landscape' ? longSide : shortSide;
   const margin = mmToInch(pdf?.marginMm ?? 0) * 2;
   return Math.max(120, (width - margin) * 96);
 }
@@ -78,17 +115,38 @@ export function buildFooterTemplate({ title = '', url = '', date = null, showPag
 }
 
 /**
- * Räknar ut skalan som behövs för att en sida som är bredare än papperet
- * ska rymmas utan att klippas av. Returnerar användarens skala när sidan
- * redan får plats.
+ * Begränsar maximal skala så att sidans layoutbredd ryms på A4. Höjden
+ * pagineras normalt över flera A4-sidor i stället för att krympas till ett ark.
  */
 export function autoFitScale({ contentWidth = 0, usableWidth = 0, scale = 1 } = {}) {
-  const base = Number.isFinite(Number(scale)) && Number(scale) > 0 ? Number(scale) : 1;
-  if (!contentWidth || !usableWidth) return base;
-  // Små avrundningar ska inte krympa sidan i onödan.
-  if (contentWidth <= usableWidth * 1.02) return base;
-  const fit = (usableWidth / contentWidth) * base;
-  return Number(Math.max(Math.min(base, MIN_AUTO_SCALE), Math.min(base, fit)).toFixed(3));
+  const requested = Number.isFinite(Number(scale)) && Number(scale) > 0 ? Number(scale) : 1;
+  const base = Math.min(2, Math.max(MIN_AUTO_SCALE, requested));
+  if (!contentWidth || !usableWidth) return Math.min(base, 1);
+
+  // Mätbredden är layoutad vid pappersbredden. Skalan får aldrig göra
+  // innehållet bredare än papperet; höjden fortsätter över flera A4-ark.
+  const fit = usableWidth / contentWidth;
+  return Number(Math.max(MIN_AUTO_SCALE, Math.min(base, fit)).toFixed(3));
+}
+
+/** Choose the orientation with the larger fitted text scale; ties stay portrait. */
+export function choosePageOrientation({
+  portraitContentWidth = 0,
+  landscapeContentWidth = 0,
+  marginMm = 0,
+  scale = 1
+} = {}) {
+  const portraitScale = autoFitScale({
+    contentWidth: portraitContentWidth,
+    usableWidth: paperWidthCssPx({ marginMm }, 'portrait'),
+    scale
+  });
+  const landscapeScale = autoFitScale({
+    contentWidth: landscapeContentWidth,
+    usableWidth: paperWidthCssPx({ marginMm }, 'landscape'),
+    scale
+  });
+  return landscapeScale > portraitScale ? 'landscape' : 'portrait';
 }
 
 /** CSS som ger en mörk utskrift (ljus text på mörk bakgrund). */
@@ -105,10 +163,12 @@ export const DARK_PRINT_CSS = `
  * DevTools-protokollets parametrar för Page.printToPDF.
  * `scale` är den färdiguträknade skalan (autoskala eller användarens val).
  */
-export function buildPrintParams({ settings, tab = {}, scale } = {}) {
+export function buildPrintParams({ settings, tab = {}, scale, landscape = false, pageRanges = '', mixedOrientation = false } = {}) {
   const pdf = settings.pdf;
   const margin = mmToInch(pdf.marginMm);
-  const [width, height] = PAPER_SIZES[pdf.format] || PAPER_SIZES.A4;
+  const [shortSide, longSide] = PAPER_SIZES.A4;
+  const width = landscape ? longSide : shortSide;
+  const height = landscape ? shortSide : longSide;
   const footer = buildFooterTemplate({
     title: pdf.footerTitle ? tab.title || '' : '',
     url: pdf.footerUrl ? tab.url || '' : '',
@@ -117,7 +177,7 @@ export function buildPrintParams({ settings, tab = {}, scale } = {}) {
   });
 
   const params = {
-    landscape: false,
+    landscape: Boolean(landscape),
     displayHeaderFooter: Boolean(footer),
     printBackground: pdf.printBackground || pdf.darkMode,
     scale: Number.isFinite(Number(scale)) ? Number(scale) : pdf.scale,
@@ -125,7 +185,8 @@ export function buildPrintParams({ settings, tab = {}, scale } = {}) {
     marginBottom: footer ? Math.max(margin, FOOTER_MARGIN) : margin,
     marginLeft: margin,
     marginRight: margin,
-    preferCSSPageSize: pdf.preferCssPageSize,
+    preferCSSPageSize: Boolean(mixedOrientation),
+    generateDocumentOutline: true,
     transferMode: 'ReturnAsBase64'
   };
 
@@ -133,6 +194,9 @@ export function buildPrintParams({ settings, tab = {}, scale } = {}) {
     params.paperWidth = width;
     params.paperHeight = height;
   }
+
+  const normalizedRanges = normalizePageRanges(pageRanges);
+  if (normalizedRanges) params.pageRanges = normalizedRanges;
 
   if (footer) {
     params.headerTemplate = '<span></span>';

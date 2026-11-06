@@ -21,49 +21,19 @@ import { resolveLang, applyI18n, t } from './lib/i18n.js';
 import { releaseUnusedOrigin } from './lib/access.js';
 import { buildFilename } from './lib/filename.js';
 import { applyTheme, watchSystemTheme } from './lib/theme.js';
+import { normalizePageRanges } from './lib/print.js';
+import { compareVersions, diffFileHashes, gitBlobSha, TRACKED_FILES } from './lib/updates.js';
 
-const FILE_ICON = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-  <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5Z"
-    stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
-  <path d="M14 3v5h5M12 12v6" stroke="currentColor" stroke-width="1.7"
-    stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="m9.3 15.3 2.7 2.7 2.7-2.7" stroke="currentColor" stroke-width="1.7"
-    stroke-linecap="round" stroke-linejoin="round"/>
-</svg>`;
-
-const PLUS_ICON = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-  <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/>
-</svg>`;
-
-const TRASH_ICON = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-  <path d="M4 7h16M9.5 7V5.2c0-.7.5-1.2 1.2-1.2h2.6c.7 0 1.2.5 1.2 1.2V7"
-    stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M6.5 7l.8 11.3c.05.7.6 1.2 1.3 1.2h6.8c.7 0 1.25-.5 1.3-1.2L17.5 7"
-    stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
-</svg>`;
-
-const CHECK_ICON = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-  <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.7"/>
-  <path d="m8 12.3 2.6 2.6L16 9.5" stroke="currentColor" stroke-width="1.7"
-    stroke-linecap="round" stroke-linejoin="round"/>
-</svg>`;
-
+window.SidaPdfIcons.hydrate(document);
+const { icon: iconSvg } = window.SidaPdfIcons;
+const FILE_ICON = iconSvg('fileDown', 16);
+const PLUS_ICON = iconSvg('plus', 16);
+const TRASH_ICON = iconSvg('trash', 14);
+const CHECK_ICON = iconSvg('checkCircle', 14);
 const BANNER_ICONS = {
-  ok: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-    <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/>
-    <path d="m8 12.3 2.6 2.6L16 9.5" stroke="currentColor" stroke-width="1.8"
-      stroke-linecap="round" stroke-linejoin="round"/>
-  </svg>`,
-  error: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-    <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/>
-    <path d="M12 7.5v5.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-    <circle cx="12" cy="16.6" r="1.05" fill="currentColor"/>
-  </svg>`,
-  info: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-    <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/>
-    <path d="M12 11v5.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-    <circle cx="12" cy="7.6" r="1.05" fill="currentColor"/>
-  </svg>`
+  ok: iconSvg('checkCircle', 14),
+  error: iconSvg('alert', 14),
+  info: iconSvg('info', 14)
 };
 
 const els = {
@@ -74,6 +44,7 @@ const els = {
   banner: document.getElementById('banner'),
   primary: document.getElementById('primary'),
   secondary: document.getElementById('secondary'),
+  pageRanges: document.getElementById('page-ranges'),
   saveAs: document.getElementById('save-as'),
   saveAsNote: document.getElementById('save-as-note'),
   filenamePreview: document.getElementById('filename-preview'),
@@ -81,6 +52,11 @@ const els = {
   openPdf: document.getElementById('open-pdf'),
   showFolder: document.getElementById('show-folder'),
   lastSaved: document.getElementById('last-saved'),
+  installedVersion: document.getElementById('installed-version'),
+  updateStatus: document.getElementById('update-status'),
+  checkUpdates: document.getElementById('check-updates'),
+  releaseLink: document.getElementById('release-link'),
+  changedFiles: document.getElementById('changed-files'),
   shortcut: document.getElementById('shortcut'),
   openOptions: document.getElementById('open-options'),
   settingsLink: document.getElementById('settings-link')
@@ -97,6 +73,146 @@ const state = {
   busy: false
 };
 
+const RELEASE_API_URL = 'https://api.github.com/repos/Tokke2/Brave-plugin/releases/latest';
+const RELEASE_PERMISSION = 'https://api.github.com/*';
+els.installedVersion.textContent = `v${chrome.runtime.getManifest().version}`;
+
+async function compareReleaseFiles(remoteEntries) {
+  const files = new Set(TRACKED_FILES);
+  for (const entry of remoteEntries) {
+    if (entry?.type !== 'blob' || typeof entry.path !== 'string') continue;
+    if (entry.path.startsWith('/') || entry.path.split('/').includes('..')) continue;
+    files.add(entry.path);
+  }
+
+  const localHashes = Object.create(null);
+  await Promise.all(
+    [...files].map(async (path) => {
+      try {
+        const response = await fetch(chrome.runtime.getURL(path));
+        if (!response.ok) return;
+        localHashes[path] = await gitBlobSha(await response.arrayBuffer());
+      } catch {
+        // Missing local file is reported as a difference from the release tree.
+      }
+    })
+  );
+  return diffFileHashes(localHashes, remoteEntries);
+}
+
+function renderChangedFiles(paths) {
+  els.changedFiles.replaceChildren();
+  const visiblePaths = paths.slice(0, 8);
+  for (const path of visiblePaths) {
+    const item = document.createElement('li');
+    item.textContent = path;
+    els.changedFiles.append(item);
+  }
+  if (paths.length > visiblePaths.length) {
+    const item = document.createElement('li');
+    item.textContent = `… +${paths.length - visiblePaths.length}`;
+    els.changedFiles.append(item);
+  }
+  els.changedFiles.hidden = paths.length === 0;
+}
+
+async function checkForUpdates({ requestPermission = true } = {}) {
+  els.checkUpdates.disabled = true;
+  els.releaseLink.hidden = true;
+  renderChangedFiles([]);
+  els.updateStatus.textContent = t(state.lang, 'update.checking');
+
+  try {
+    // The toolbar context-menu route requests permission before opening this tab;
+    // the panel button requests it directly from its own click gesture.
+    const granted = requestPermission
+      ? await chrome.permissions.request({ origins: [RELEASE_PERMISSION] })
+      : await chrome.permissions.contains({ origins: [RELEASE_PERMISSION] });
+    if (!granted) {
+      els.updateStatus.textContent = t(state.lang, 'update.permissionDenied');
+      return;
+    }
+
+    const headers = {
+      Accept: 'application/vnd.github+json',
+      'X-GitHub-Api-Version': '2022-11-28'
+    };
+    const response = await fetch(RELEASE_API_URL, { headers });
+    if (response.status === 404) {
+      els.updateStatus.textContent = t(state.lang, 'update.noRelease');
+      return;
+    }
+    if (!response.ok) throw new Error(`GitHub release API returned ${response.status}`);
+
+    const release = await response.json();
+    const latest = String(release.tag_name || '').trim();
+    const commitResponse = await fetch(
+      `https://api.github.com/repos/Tokke2/Brave-plugin/commits/${encodeURIComponent(latest)}`,
+      { headers }
+    );
+    if (!commitResponse.ok) throw new Error(`GitHub commit API returned ${commitResponse.status}`);
+    const commit = await commitResponse.json();
+    const treeSha = commit.commit?.tree?.sha;
+    if (!/^[a-f0-9]{40}$/i.test(treeSha || '')) throw new Error('GitHub returned an invalid tree SHA');
+
+    const treeResponse = await fetch(
+      `https://api.github.com/repos/Tokke2/Brave-plugin/git/trees/${treeSha}?recursive=1`,
+      { headers }
+    );
+    if (!treeResponse.ok) throw new Error(`GitHub tree API returned ${treeResponse.status}`);
+    const tree = await treeResponse.json();
+    if (tree.truncated || !Array.isArray(tree.tree)) throw new Error('GitHub returned an incomplete file tree');
+
+    const remoteEntries = tree.tree.filter(
+      (entry) => entry?.type === 'blob' && typeof entry.path === 'string' && /^[a-f0-9]{40}$/i.test(entry.sha || '')
+    );
+    if (!remoteEntries.some((entry) => entry.path === 'manifest.json')) {
+      throw new Error('Release tree does not contain manifest.json');
+    }
+    const changes = await compareReleaseFiles(remoteEntries);
+    renderChangedFiles(changes);
+
+    const installed = chrome.runtime.getManifest().version;
+    const comparison = compareVersions(latest, installed);
+    if (comparison === null) {
+      els.updateStatus.textContent = t(state.lang, 'update.invalidVersion');
+      return;
+    }
+
+    if (comparison > 0) {
+      els.updateStatus.textContent = t(state.lang, 'update.available', {
+        latest,
+        installed,
+        count: changes.length
+      });
+      const url = new URL(release.html_url || 'https://github.com/Tokke2/Brave-plugin/releases/latest');
+      if (url.origin !== 'https://github.com') throw new Error('Unexpected release URL');
+      els.releaseLink.href = url.href;
+      els.releaseLink.hidden = false;
+    } else if (comparison < 0) {
+      els.updateStatus.textContent = t(state.lang, 'update.installedNewer', {
+        installed,
+        latest,
+        count: changes.length
+      });
+    } else if (changes.length) {
+      els.updateStatus.textContent = t(state.lang, 'update.filesDiffer', {
+        installed,
+        count: changes.length
+      });
+      els.releaseLink.href = release.html_url;
+      els.releaseLink.hidden = false;
+    } else {
+      els.updateStatus.textContent = t(state.lang, 'update.same', { installed });
+    }
+  } catch (error) {
+    console.warn('GitHub release check failed', error);
+    els.updateStatus.textContent = t(state.lang, 'update.error');
+  } finally {
+    els.checkUpdates.disabled = false;
+  }
+}
+
 function basename(path) {
   return String(path || '').split('/').pop();
 }
@@ -111,8 +227,6 @@ function previewFilename() {
     const host = new URL(state.url).hostname.replace(/^www\./, '') || 'webbplats';
     return buildFilename({
       template: state.settings.file.template,
-      folder: state.settings.file.folder,
-      perSiteFolder: state.settings.file.perSiteFolder,
       site: host,
       title: state.tab?.title || host,
       date: new Date()
@@ -195,10 +309,12 @@ function render() {
   els.siteName.textContent = hostname || t(lang, 'popup.openPage');
   els.siteName.title = hostname;
   els.saveAs.checked = settings.file.saveAs;
-  els.saveAsNote.textContent = t(
-    lang,
-    settings.file.saveAs ? 'popup.saveAsHintOn' : 'popup.saveAsHintOff'
-  );
+  const saveAsHintKey = settings.file.saveAs
+    ? 'popup.saveAsHintOn'
+    : settings.file.rememberLocation
+      ? 'popup.saveAsHintRemembered'
+      : 'popup.saveAsHintOff';
+  els.saveAsNote.textContent = t(lang, saveAsHintKey);
 
   const preview = previewFilename();
   els.filenamePreview.textContent = preview || '–';
@@ -300,9 +416,23 @@ async function load({ initial = false } = {}) {
   applyI18n(document, state.lang);
 
   if (initial) {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    const requestedTabId = Number(new URLSearchParams(window.location.search).get('tabId'));
+    let tab = null;
+    if (Number.isInteger(requestedTabId) && requestedTabId > 0) {
+      try {
+        tab = await chrome.tabs.get(requestedTabId);
+      } catch {
+        tab = null;
+      }
+    }
+    if (!tab) {
+      [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    }
     state.tab = tab || null;
     state.url = tab?.url || '';
+    if (new URLSearchParams(window.location.search).has('tabId')) {
+      document.body.classList.add('panel-tab');
+    }
     document.title = t(state.lang, 'appName');
   }
 
@@ -315,6 +445,11 @@ async function load({ initial = false } = {}) {
 
 async function savePdf() {
   if (state.busy || !state.allowed) return;
+  const pageRanges = normalizePageRanges(els.pageRanges.value);
+  if (pageRanges === null) {
+    setBanner('error', t(state.lang, 'errors.pageRangeInvalid'));
+    return;
+  }
   state.busy = true;
   setPrimary({ loading: true, label: t(state.lang, 'popup.saving'), disabled: true });
   els.secondary.disabled = true;
@@ -323,14 +458,24 @@ async function savePdf() {
     const response = await chrome.runtime.sendMessage({
       type: 'SAVE_PDF',
       tabId: state.tab?.id,
-      url: state.url
+      url: state.url,
+      pageRanges
     });
 
     if (response?.ok) {
-      if (response.readerFallback) {
-        setBanner('info', t(state.lang, 'popup.readerFallback'));
+      const removedPages = Number(response.blankPagesRemoved) || 0;
+      const cleanupNote = removedPages
+        ? ` · ${t(state.lang, 'pdf.blankPagesRemoved', { count: removedPages })}`
+        : '';
+      const locationNote = response.locationFallback
+        ? ` · ${t(state.lang, 'popup.locationFallback')}`
+        : '';
+      if (response.autoOpenFailed) {
+        setBanner('info', `${t(state.lang, 'popup.autoOpenBlocked')}${cleanupNote}${locationNote}`);
+      } else if (response.readerFallback) {
+        setBanner('info', `${t(state.lang, 'popup.readerFallback')}${cleanupNote}${locationNote}`);
       } else {
-        setBanner('ok', `${t(state.lang, 'popup.saved')} · ${basename(response.filename)}`);
+        setBanner('ok', `${t(state.lang, 'popup.saved')} · ${basename(response.filename)}${cleanupNote}${locationNote}`);
       }
       setBannerActions(response.downloadId);
       await renderHistory();
@@ -354,6 +499,10 @@ async function savePdf() {
 async function addSiteAndSave() {
   const pattern = suggestedPattern();
   if (!pattern || state.busy) return;
+  if (normalizePageRanges(els.pageRanges.value) === null) {
+    setBanner('error', t(state.lang, 'errors.pageRangeInvalid'));
+    return;
+  }
 
   state.busy = true;
   setPrimary({ loading: true, label: t(state.lang, 'popup.saving'), disabled: true });
@@ -456,6 +605,7 @@ els.secondary.addEventListener('click', () => {
 
 els.openOptions.addEventListener('click', openOptions);
 els.settingsLink.addEventListener('click', openOptions);
+els.checkUpdates.addEventListener('click', () => void checkForUpdates());
 
 onSettingsChanged(() => {
   void (async () => {
@@ -472,4 +622,8 @@ watchSystemTheme(() => {
   if (normalizeTheme(state.settings?.theme) === 'auto') applyTheme('auto');
 });
 
-void load({ initial: true });
+void load({ initial: true }).then(() => {
+  if (new URLSearchParams(window.location.search).get('checkUpdates') === '1') {
+    void checkForUpdates({ requestPermission: false });
+  }
+});

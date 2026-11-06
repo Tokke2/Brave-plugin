@@ -35,17 +35,15 @@ test('dateParts formaterar lokal tid', () => {
   });
 });
 
-test('buildFilename bygger mapp och filnamn', () => {
+test('buildFilename bygger bara filnamnet utan mapp', () => {
   assert.equal(
     buildFilename({
       template: '{date}_{title}',
-      folder: 'Sidor',
-      perSiteFolder: true,
       site: 'example.com',
       title: 'Nyheter idag',
       date
     }),
-    'Sidor/example.com/2026-11-04_Nyheter idag.pdf'
+    '2026-11-04_Nyheter idag.pdf'
   );
 });
 
@@ -73,7 +71,7 @@ test('buildFilename ersätter okända taggar och städar filnamn', () => {
     title: 'A/B: test?',
     date
   });
-  assert.equal(name, 'PDF/www.example.com-AB test.pdf');
+  assert.equal(name, 'www.example.com-AB test.pdf');
   assert.ok(!name.includes('{'), 'inga taggar ska vara kvar');
 });
 
@@ -85,9 +83,20 @@ test('buildFilename använder sidtiteln som standard', () => {
     title: 'removing - refitting : multifunction video camera',
     date
   });
+  assert.equal(name, 'removing - refitting multifunction video camera.pdf');
+});
+
+test('gamla mappinställningar skapar inte längre undermappar', () => {
   assert.equal(
-    name,
-    'Sidor/app.alldata.com/removing - refitting multifunction video camera.pdf'
+    buildFilename({
+      template: '{title}',
+      folder: 'Sidor',
+      perSiteFolder: true,
+      site: 'example.com',
+      title: 'Min sida',
+      date
+    }),
+    'Min sida.pdf'
   );
 });
 
@@ -127,5 +136,5 @@ test('buildFilename använder alla taggar', () => {
     title: 'x',
     date
   });
-  assert.equal(name, 'S/2026-11-04_14-05-09_example.com.pdf');
+  assert.equal(name, '2026-11-04_14-05-09_example.com.pdf');
 });

@@ -101,6 +101,18 @@ p {
   margin: 0;
 }
 
+.icon-slot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  line-height: 0;
+}
+
+.icon-slot svg {
+  display: block;
+}
+
 h1,
 h2,
 h3 {

@@ -11,14 +11,37 @@ import {
 
 test('standardmallen döper filen efter sidtiteln', () => {
   assert.equal(DEFAULT_SETTINGS.file.template, '{title}');
-  assert.equal(DEFAULT_SETTINGS.version, 4);
+  assert.equal(DEFAULT_SETTINGS.version, 9);
   assert.equal(mergeSettings({}).file.template, '{title}');
-  assert.equal(mergeSettings({}).version, 4);
+  assert.equal(mergeSettings({}).version, 9);
+});
+
+test('migrering till version 9 tar bort mappar från filinställningarna', () => {
+  const settings = mergeSettings({
+    version: 4,
+    file: { folder: 'Sidor', perSiteFolder: true, template: '{title}' }
+  });
+  assert.equal(settings.version, 9);
+  assert.equal('folder' in settings.file, false);
+  assert.equal('perSiteFolder' in settings.file, false);
+});
+
+test('PDF-inställningar tvingar A4 och automatisk breddsanpassning', () => {
+  const settings = mergeSettings({
+    version: 5,
+    pdf: { format: 'A3', autoScale: false, preferCssPageSize: true }
+  });
+  assert.equal(settings.pdf.format, 'A4');
+  assert.equal(settings.pdf.autoScale, true);
+  assert.equal(settings.pdf.preferCssPageSize, false);
 });
 
 test('spara-dialogen är på som standard och slås på vid migrering', () => {
   assert.equal(DEFAULT_SETTINGS.file.saveAs, true);
+  assert.equal(DEFAULT_SETTINGS.file.rememberLocation, false);
   assert.equal(mergeSettings({}).file.saveAs, true);
+  assert.equal(mergeSettings({}).file.rememberLocation, false);
+  assert.equal(mergeSettings({ file: { rememberLocation: true } }).file.rememberLocation, true);
   // Gamla installationer hade tyst nedladdning – nu frågar vi i stället.
   assert.equal(mergeSettings({ version: 2, file: { saveAs: false } }).file.saveAs, true);
   // Har man aktivt stängt av den i version 3 respekteras det.
@@ -94,6 +117,26 @@ test('nya PDF-val har sansade standardvärden', () => {
   assert.equal(settings.pdf.footerTitle, false);
   assert.equal(settings.pdf.footerUrl, false);
   assert.equal(settings.pdf.footerDate, false);
+  assert.equal(settings.pdf.watermark, '');
+  assert.equal(settings.pdf.optimizeImages, false);
+  assert.equal(settings.pdf.openAfterSave, false);
+  assert.equal(settings.pdf.tableOfContents, false);
+  assert.equal(settings.pdf.removeBlankPages, false);
+
+  const extras = mergeSettings({
+    pdf: {
+      watermark: '  CONFIDENTIAL  ',
+      optimizeImages: true,
+      openAfterSave: true,
+      tableOfContents: true,
+      removeBlankPages: true
+    }
+  });
+  assert.equal(extras.pdf.watermark, 'CONFIDENTIAL');
+  assert.equal(extras.pdf.optimizeImages, true);
+  assert.equal(extras.pdf.openAfterSave, true);
+  assert.equal(extras.pdf.tableOfContents, true);
+  assert.equal(extras.pdf.removeBlankPages, true);
 
   // Gamla installationer får autoskala på, men inget annat påslaget.
   const old = mergeSettings({ version: 3, pdf: { format: 'A4' } });

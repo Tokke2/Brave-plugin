@@ -17,9 +17,14 @@ import { resolveLang, applyI18n, t } from './lib/i18n.js';
 import { buildFilename } from './lib/filename.js';
 import { releaseUnusedOrigin } from './lib/access.js';
 import { applyTheme, watchSystemTheme } from './lib/theme.js';
+import { getSavedDirectoryHandle, saveDirectoryHandle, clearDirectoryHandle } from './lib/directory-storage.js';
+
+window.SidaPdfIcons.hydrate(document);
+const { icon: iconSvg } = window.SidaPdfIcons;
 
 const els = {
   banner: document.getElementById('banner'),
+  appVersion: document.getElementById('app-version'),
   saveFlash: document.getElementById('save-flash'),
   siteCount: document.getElementById('site-count'),
   addForm: document.getElementById('add-form'),
@@ -29,26 +34,29 @@ const els = {
   siteEmpty: document.getElementById('site-empty'),
   buttonShow: document.getElementById('button-show'),
   buttonPosition: document.getElementById('button-position'),
-  pdfFormat: document.getElementById('pdf-format'),
   pdfMargin: document.getElementById('pdf-margin'),
   pdfScale: document.getElementById('pdf-scale'),
   pdfWait: document.getElementById('pdf-wait'),
   pdfBackground: document.getElementById('pdf-background'),
   pdfHeader: document.getElementById('pdf-header'),
-  pdfCssPage: document.getElementById('pdf-css-page'),
   pdfReader: document.getElementById('pdf-reader'),
-  pdfAutoScale: document.getElementById('pdf-auto-scale'),
   pdfDark: document.getElementById('pdf-dark'),
+  pdfWatermark: document.getElementById('pdf-watermark'),
+  pdfOptimizeImages: document.getElementById('pdf-optimize-images'),
+  pdfOpenAfterSave: document.getElementById('pdf-open-after-save'),
+  pdfTableOfContents: document.getElementById('pdf-table-of-contents'),
+  pdfRemoveBlankPages: document.getElementById('pdf-remove-blank-pages'),
   pdfFooterTitle: document.getElementById('pdf-footer-title'),
   pdfFooterUrl: document.getElementById('pdf-footer-url'),
   pdfFooterDate: document.getElementById('pdf-footer-date'),
   resetPdf: document.getElementById('reset-pdf'),
-  fileFolder: document.getElementById('file-folder'),
   fileTemplate: document.getElementById('file-template'),
   filePreview: document.getElementById('file-preview'),
-  filePerSite: document.getElementById('file-per-site'),
   fileSaveAs: document.getElementById('file-save-as'),
   saveAsHint: document.getElementById('save-as-hint'),
+  savedFolderStatus: document.getElementById('saved-folder-status'),
+  chooseSaveFolder: document.getElementById('choose-save-folder'),
+  clearSaveFolder: document.getElementById('clear-save-folder'),
   theme: document.getElementById('theme'),
   language: document.getElementById('language'),
   allowAll: document.getElementById('allow-all'),
@@ -60,10 +68,13 @@ const els = {
   resetAll: document.getElementById('reset-all')
 };
 
+els.appVersion.textContent = `v${chrome.runtime.getManifest().version}`;
+
 const state = {
   settings: null,
   lang: 'sv',
   access: new Map(),
+  savedDirectoryHandle: null,
   feedbackTimer: null,
   flashTimer: null
 };
@@ -173,28 +184,30 @@ function renderAll() {
   els.buttonShow.checked = settings.button.show;
   els.buttonPosition.value = settings.button.position;
 
-  els.pdfFormat.value = settings.pdf.format;
   els.pdfMargin.value = String(settings.pdf.marginMm);
   els.pdfScale.value = String(Math.round(settings.pdf.scale * 100));
   els.pdfWait.value = String(settings.pdf.waitMs);
   els.pdfBackground.checked = settings.pdf.printBackground;
   els.pdfHeader.checked = settings.pdf.headerFooter;
-  els.pdfCssPage.checked = settings.pdf.preferCssPageSize;
   els.pdfReader.checked = settings.pdf.reader;
-  els.pdfAutoScale.checked = settings.pdf.autoScale;
   els.pdfDark.checked = settings.pdf.darkMode;
+  els.pdfWatermark.value = settings.pdf.watermark;
+  els.pdfOptimizeImages.checked = settings.pdf.optimizeImages;
+  els.pdfOpenAfterSave.checked = settings.pdf.openAfterSave;
+  els.pdfTableOfContents.checked = settings.pdf.tableOfContents;
+  els.pdfRemoveBlankPages.checked = settings.pdf.removeBlankPages;
   els.pdfFooterTitle.checked = settings.pdf.footerTitle;
   els.pdfFooterUrl.checked = settings.pdf.footerUrl;
   els.pdfFooterDate.checked = settings.pdf.footerDate;
 
-  els.fileFolder.value = settings.file.folder;
   els.fileTemplate.value = settings.file.template;
-  els.filePerSite.checked = settings.file.perSiteFolder;
   els.fileSaveAs.checked = settings.file.saveAs;
-  els.saveAsHint.textContent = t(
-    state.lang,
-    settings.file.saveAs ? 'options.file.saveAsHintOn' : 'options.file.saveAsHint'
-  );
+  const saveHintKey = settings.file.saveAs
+    ? 'options.file.saveAsHintOn'
+    : settings.file.rememberLocation
+      ? 'options.file.saveAsHintRemembered'
+      : 'options.file.saveAsHint';
+  els.saveAsHint.textContent = t(state.lang, saveHintKey);
 
   els.theme.value = normalizeTheme(settings.theme);
   applyTheme(settings.theme);
@@ -205,6 +218,51 @@ function renderAll() {
   renderSites();
   renderPreview();
   renderShortcut();
+  void renderSavedFolder();
+}
+
+async function renderSavedFolder() {
+  const supported = typeof window.showDirectoryPicker === 'function';
+  els.chooseSaveFolder.disabled = !supported;
+  if (!supported) {
+    state.savedDirectoryHandle = null;
+    els.savedFolderStatus.textContent = t(state.lang, 'options.file.folderUnsupported');
+    els.clearSaveFolder.hidden = true;
+    return;
+  }
+
+  try {
+    state.savedDirectoryHandle = await getSavedDirectoryHandle();
+  } catch {
+    state.savedDirectoryHandle = null;
+  }
+
+  const handle = state.savedDirectoryHandle;
+  els.clearSaveFolder.hidden = !handle;
+  if (!handle) {
+    els.savedFolderStatus.textContent = t(state.lang, 'options.file.folderNone');
+    return;
+  }
+
+  let permission = 'prompt';
+  try {
+    permission = await handle.queryPermission({ mode: 'readwrite' });
+  } catch {
+    permission = 'denied';
+  }
+  if (permission === 'granted') {
+    els.savedFolderStatus.textContent = t(
+      state.lang,
+      state.settings.file.rememberLocation && !state.settings.file.saveAs
+        ? 'options.file.folderActive'
+        : 'options.file.folderSelected',
+      { folder: handle.name }
+    );
+  } else {
+    els.savedFolderStatus.textContent = t(state.lang, 'options.file.folderPermissionNeeded', {
+      folder: handle.name
+    });
+  }
 }
 
 function renderSites() {
@@ -253,12 +311,7 @@ function renderSites() {
       const grantIcon = document.createElement('span');
       grantIcon.className = 'grant-icon';
       grantIcon.setAttribute('aria-hidden', 'true');
-      grantIcon.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none">
-        <path d="M12 3.2l7 2.9v5.4c0 4.2-2.9 7.4-7 9.3-4.1-1.9-7-5.1-7-9.3V6.1l7-2.9Z"
-          stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
-        <path d="m9.2 12 2 2 3.6-3.6" stroke="currentColor" stroke-width="1.8"
-          stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>`;
+      grantIcon.innerHTML = iconSvg('shield', 12);
 
       grant.append(grantIcon, document.createTextNode(t(lang, 'options.sites.grant')));
       meta.appendChild(grant);
@@ -296,9 +349,7 @@ function renderSites() {
     remove.dataset.action = 'remove';
     remove.title = t(lang, 'options.sites.remove');
     remove.setAttribute('aria-label', `${t(lang, 'options.sites.remove')}: ${site.pattern}`);
-    remove.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M4 7h16M9 7V5h6v2m-8 0 1 12h8l1-12" stroke="currentColor" stroke-width="1.6"
-        stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+    remove.innerHTML = iconSvg('trash', 16);
 
     actions.append(toggle, remove);
     row.append(main, actions);
@@ -310,8 +361,6 @@ function renderPreview() {
   const { settings, lang } = state;
   const sample = buildFilename({
     template: settings.file.template,
-    folder: settings.file.folder,
-    perSiteFolder: settings.file.perSiteFolder,
     site: 'example.com',
     title: t(lang, 'options.file.sampleTitle'),
     date: new Date()
@@ -435,12 +484,6 @@ els.buttonPosition.addEventListener('change', () => {
   });
 });
 
-els.pdfFormat.addEventListener('change', () => {
-  void persist((draft) => {
-    draft.pdf.format = els.pdfFormat.value;
-  });
-});
-
 els.pdfMargin.addEventListener('change', () => {
   void persist((draft) => {
     draft.pdf.marginMm = els.pdfMargin.value;
@@ -471,27 +514,45 @@ els.pdfHeader.addEventListener('change', () => {
   });
 });
 
-els.pdfCssPage.addEventListener('change', () => {
-  void persist((draft) => {
-    draft.pdf.preferCssPageSize = els.pdfCssPage.checked;
-  });
-});
-
 els.pdfReader.addEventListener('change', () => {
   void persist((draft) => {
     draft.pdf.reader = els.pdfReader.checked;
   });
 });
 
-els.pdfAutoScale.addEventListener('change', () => {
-  void persist((draft) => {
-    draft.pdf.autoScale = els.pdfAutoScale.checked;
-  });
-});
-
 els.pdfDark.addEventListener('change', () => {
   void persist((draft) => {
     draft.pdf.darkMode = els.pdfDark.checked;
+  });
+});
+
+els.pdfWatermark.addEventListener('change', () => {
+  void persist((draft) => {
+    draft.pdf.watermark = els.pdfWatermark.value;
+  });
+});
+
+els.pdfOptimizeImages.addEventListener('change', () => {
+  void persist((draft) => {
+    draft.pdf.optimizeImages = els.pdfOptimizeImages.checked;
+  });
+});
+
+els.pdfOpenAfterSave.addEventListener('change', () => {
+  void persist((draft) => {
+    draft.pdf.openAfterSave = els.pdfOpenAfterSave.checked;
+  });
+});
+
+els.pdfTableOfContents.addEventListener('change', () => {
+  void persist((draft) => {
+    draft.pdf.tableOfContents = els.pdfTableOfContents.checked;
+  });
+});
+
+els.pdfRemoveBlankPages.addEventListener('change', () => {
+  void persist((draft) => {
+    draft.pdf.removeBlankPages = els.pdfRemoveBlankPages.checked;
   });
 });
 
@@ -519,21 +580,9 @@ els.resetPdf.addEventListener('click', () => {
   });
 });
 
-els.fileFolder.addEventListener('change', () => {
-  void persist((draft) => {
-    draft.file.folder = els.fileFolder.value;
-  });
-});
-
 els.fileTemplate.addEventListener('change', () => {
   void persist((draft) => {
     draft.file.template = els.fileTemplate.value;
-  });
-});
-
-els.filePerSite.addEventListener('change', () => {
-  void persist((draft) => {
-    draft.file.perSiteFolder = els.filePerSite.checked;
   });
 });
 
@@ -541,6 +590,40 @@ els.fileSaveAs.addEventListener('change', () => {
   void persist((draft) => {
     draft.file.saveAs = els.fileSaveAs.checked;
   });
+});
+
+els.chooseSaveFolder.addEventListener('click', async () => {
+  if (typeof window.showDirectoryPicker !== 'function') {
+    showBanner('error', t(state.lang, 'options.file.folderUnsupported'));
+    return;
+  }
+  try {
+    // Start the picker before awaiting anything so the browser accepts the user gesture.
+    const handle = await window.showDirectoryPicker({ mode: 'readwrite' });
+    const permission = await handle.requestPermission({ mode: 'readwrite' });
+    if (permission !== 'granted') {
+      showBanner('error', t(state.lang, 'options.file.folderPermissionDenied'));
+      return;
+    }
+    await saveDirectoryHandle(handle);
+    await persist((draft) => {
+      draft.file.rememberLocation = true;
+      draft.file.saveAs = false;
+    }, { message: t(state.lang, 'options.file.folderSaved', { folder: handle.name }) });
+  } catch (error) {
+    if (error?.name !== 'AbortError') showBanner('error', t(state.lang, 'options.file.folderFailed'));
+  }
+});
+
+els.clearSaveFolder.addEventListener('click', async () => {
+  try {
+    await clearDirectoryHandle();
+    await persist((draft) => {
+      draft.file.rememberLocation = false;
+    }, { message: t(state.lang, 'options.file.folderCleared') });
+  } catch {
+    showBanner('error', t(state.lang, 'options.file.folderFailed'));
+  }
 });
 
 els.theme.addEventListener('change', () => {
@@ -585,7 +668,10 @@ els.exportButton.addEventListener('click', () => {
     app: 'sida-till-pdf',
     version: 1,
     exportedAt: new Date().toISOString(),
-    settings: state.settings
+    settings: {
+      ...state.settings,
+      file: { ...state.settings.file, rememberLocation: false }
+    }
   };
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
@@ -611,6 +697,8 @@ els.importFile.addEventListener('change', async () => {
     const candidate = parsed?.settings ?? parsed;
     if (!candidate || typeof candidate !== 'object') throw new Error('Ogiltig struktur');
     const settings = mergeSettings(candidate);
+    // A directory handle is browser-local and is deliberately not imported.
+    settings.file.rememberLocation = false;
     await saveSettings(settings);
     state.settings = await getSettings();
     state.lang = resolveLang(state.settings.language, chrome.i18n.getUILanguage());
@@ -626,6 +714,7 @@ els.importFile.addEventListener('change', async () => {
 
 els.resetAll.addEventListener('click', async () => {
   if (!window.confirm(t(state.lang, 'options.general.resetConfirm'))) return;
+  await clearDirectoryHandle();
   await saveSettings(structuredClone(DEFAULT_SETTINGS));
   state.settings = await getSettings();
   state.lang = resolveLang(state.settings.language, chrome.i18n.getUILanguage());

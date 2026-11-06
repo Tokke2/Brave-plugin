@@ -4,6 +4,14 @@ body.popup {
   background: var(--surface);
 }
 
+body.popup.panel-tab {
+  width: min(100% - 32px, 420px);
+  margin: 24px auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 16px 48px rgba(16, 24, 40, .12);
+}
+
 .popup-header {
   display: flex;
   align-items: center;
@@ -221,6 +229,59 @@ body.popup {
   text-overflow: ellipsis;
   white-space: nowrap;
   text-align: right;
+}
+
+.update-card {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin-top: 12px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+}
+
+.update-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: var(--text-sm);
+}
+
+.update-status {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  line-height: 1.45;
+}
+
+.update-card .btn {
+  min-height: 34px;
+}
+
+.release-link {
+  align-self: flex-start;
+  font-size: var(--text-xs);
+}
+
+.release-link[hidden],
+.changed-files[hidden] {
+  display: none;
+}
+
+.changed-files {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin: 0;
+  padding-left: 18px;
+  max-height: 92px;
+  overflow: auto;
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  overflow-wrap: anywhere;
 }
 
 .popup-footer {

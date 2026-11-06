@@ -62,18 +62,17 @@ export function dateParts(date = new Date()) {
 }
 
 /**
- * Bygger ett relativt filnamn (utan inledande snedstreck) för chrome.downloads.
+ * Bygger ett filnamn utan mappdelar för chrome.downloads. Plats väljs av
+ * användaren i webbläsarens spar-dialog; tillägget skapar inga undermappar.
  *
  * @param {object} options
- * @param {string} options.template      t.ex. "{title}" eller "{date}_{title}"
- * @param {string} options.folder        underkatalog i Hämtade filer
- * @param {boolean} options.perSiteFolder egen undermapp per webbplats
- * @param {string} options.site          värdnamn
- * @param {string} options.title         sidtitel
- * @param {Date}   [options.date]        tidpunkt (default: nu)
- * @returns {string} t.ex. "Sidor/app.alldata.com/Removing - Refitting.pdf"
+ * @param {string} options.template t.ex. "{title}" eller "{date}_{title}"
+ * @param {string} options.site     värdnamn
+ * @param {string} options.title    sidtitel
+ * @param {Date}   [options.date]   tidpunkt (default: nu)
+ * @returns {string} t.ex. "Removing - Refitting.pdf"
  */
-export function buildFilename({ template, folder, perSiteFolder, site, title, date = new Date() } = {}) {
+export function buildFilename({ template, site, title, date = new Date() } = {}) {
   const parts = dateParts(date);
   const tokens = {
     site: sanitizeSegment(site || 'webbplats', 60),
@@ -101,11 +100,5 @@ export function buildFilename({ template, folder, perSiteFolder, site, title, da
   name = sanitizeSegment(name, 120);
   name = `${name}.pdf`;
 
-  const segments = [];
-  const folderName = sanitizeSegment(folder || '', 60);
-  if (folderName && folderName !== 'sida') segments.push(folderName);
-  if (perSiteFolder) segments.push(tokens.site);
-  segments.push(name);
-
-  return segments.join('/');
+  return name;
 }

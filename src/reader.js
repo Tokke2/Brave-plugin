@@ -30,6 +30,22 @@ function waitForImages() {
   );
 }
 
+function sanitizeCapturedHtml(value) {
+  const template = document.createElement('template');
+  template.innerHTML = String(value || '');
+  template.content.querySelectorAll('script,style,noscript,iframe,object,embed,form,button,input,select,textarea,link,meta,base,foreignObject').forEach((node) => node.remove());
+  for (const element of template.content.querySelectorAll('*')) {
+    for (const attribute of [...element.attributes]) {
+      const name = attribute.name.toLowerCase();
+      const content = attribute.value.trim();
+      if (name.startsWith('on') || ((name === 'href' || name === 'src' || name === 'xlink:href') && /^\s*javascript:/i.test(content))) {
+        element.removeAttribute(attribute.name);
+      }
+    }
+  }
+  return template.innerHTML;
+}
+
 async function boot() {
   let article = null;
   try {
@@ -49,7 +65,7 @@ async function boot() {
   document.getElementById('reader-title').textContent = title;
 
   const content = document.getElementById('reader-content');
-  content.innerHTML = article.html || '';
+  content.innerHTML = sanitizeCapturedHtml(article.html);
 
   try {
     const host = new URL(article.url).hostname.replace(/^www\./, '');

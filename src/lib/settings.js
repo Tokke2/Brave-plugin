@@ -9,7 +9,7 @@ export const HISTORY_KEY = 'history';
 const HISTORY_LIMIT = 15;
 
 export const DEFAULT_SETTINGS = Object.freeze({
-  version: 4,
+  version: 9,
   language: 'auto', // 'auto' | 'sv' | 'en'
   theme: 'auto', // 'auto' | 'light' | 'dark'
   allowAll: false,
@@ -19,7 +19,7 @@ export const DEFAULT_SETTINGS = Object.freeze({
     position: 'br' // 'br' | 'bl' | 'tr' | 'tl'
   },
   pdf: {
-    format: 'A4', // 'A4' | 'Letter' | 'Legal' | 'A3'
+    format: 'A4', // Always A4.
     marginMm: 10,
     scale: 1,
     printBackground: false,
@@ -31,18 +31,21 @@ export const DEFAULT_SETTINGS = Object.freeze({
     footerTitle: false,
     footerUrl: false,
     footerDate: false,
+    watermark: '',
+    optimizeImages: false,
+    openAfterSave: false,
+    tableOfContents: false,
+    removeBlankPages: false,
     waitMs: 400
   },
   file: {
-    folder: 'Sidor',
     template: '{title}',
-    perSiteFolder: true,
-    saveAs: true
+    saveAs: true,
+    rememberLocation: false
   }
 });
 
 const POSITIONS = ['br', 'bl', 'tr', 'tl'];
-const FORMATS = ['A4', 'Letter', 'Legal', 'A3'];
 const LANGUAGES = ['auto', 'sv', 'en'];
 export const THEMES = ['auto', 'light', 'dark'];
 
@@ -116,26 +119,30 @@ export function mergeSettings(raw) {
       position: POSITIONS.includes(button.position) ? button.position : DEFAULT_SETTINGS.button.position
     },
     pdf: {
-      format: FORMATS.includes(pdf.format) ? pdf.format : DEFAULT_SETTINGS.pdf.format,
+      format: 'A4',
       marginMm: clampNumber(pdf.marginMm, 0, 50, DEFAULT_SETTINGS.pdf.marginMm),
       scale: clampNumber(pdf.scale, 0.5, 2, DEFAULT_SETTINGS.pdf.scale),
       printBackground: pdf.printBackground === true,
       headerFooter: pdf.headerFooter === true,
-      preferCssPageSize: pdf.preferCssPageSize === true,
-      // Från och med version 4: autoskala, mörk utskrift, artikelläge och källrad.
-      autoScale: pdf.autoScale !== false,
+      preferCssPageSize: false,
+      // Från och med version 6 anpassas alla utskrifter automatiskt till A4.
+      autoScale: true,
       darkMode: pdf.darkMode === true,
       reader: pdf.reader === true,
       footerTitle: pdf.footerTitle === true,
       footerUrl: pdf.footerUrl === true,
       footerDate: pdf.footerDate === true,
+      watermark: typeof pdf.watermark === 'string' ? pdf.watermark.trim().slice(0, 80) : '',
+      optimizeImages: pdf.optimizeImages === true,
+      openAfterSave: pdf.openAfterSave === true,
+      tableOfContents: pdf.tableOfContents === true,
+      removeBlankPages: pdf.removeBlankPages === true,
       waitMs: Math.round(clampNumber(pdf.waitMs, 0, 5000, DEFAULT_SETTINGS.pdf.waitMs))
     },
     file: {
-      folder: typeof file.folder === 'string' ? file.folder.slice(0, 80) : DEFAULT_SETTINGS.file.folder,
       template,
-      perSiteFolder: file.perSiteFolder !== false,
-      saveAs
+      saveAs,
+      rememberLocation: file.rememberLocation === true
     }
   };
 }
@@ -143,8 +150,11 @@ export function mergeSettings(raw) {
 /** Hämtar inställningar (alltid kompletta). */
 export async function getSettings() {
   const stored = await chrome.storage.local.get(SETTINGS_KEY);
-  const settings = mergeSettings(stored?.[SETTINGS_KEY]);
-  if (!stored?.[SETTINGS_KEY]) await chrome.storage.local.set({ [SETTINGS_KEY]: settings });
+  const existing = stored?.[SETTINGS_KEY];
+  const settings = mergeSettings(existing);
+  if (!existing || Number(existing.version) !== settings.version) {
+    await chrome.storage.local.set({ [SETTINGS_KEY]: settings });
+  }
   return settings;
 }
 
