@@ -20,7 +20,7 @@
 
 ### Använda tillägget
 
-- Klicka på tilläggsikonen och sedan på **Spara PDF**. Spar-dialogen öppnas varje gång i den valda sparmappen.
+- Klicka på tilläggsikonen och sedan på **Spara PDF**. Spar-dialogen öppnas varje gång och minns senast valda mapp.
 - Högerklicka på markerad text för att spara bara texten, eller välj **Välj område att spara som PDF** och klicka på ett område.
 - I panelen kan du välja sidintervall, till exempel `1-3, 5`. Lämna tomt för alla sidor.
 - Lägg till en webbplats i inställningarna om du vill visa den flytande PDF-knappen på sidan.
@@ -31,7 +31,7 @@
 - PDF-bokmärken, valbar innehållsförteckning från rubriker och förbättrade sidbrytningar.
 - Valbar lokal analys tar bort nästan tomma PDF-sidor.
 - Valbart artikelläge, mörk utskrift, vattenstämpel och optimering av stora bilder.
-- Välj en sparmapp i inställningarna. Spar-dialogen öppnas där varje gång; stäng av dialogen om du vill spara direkt. Inga undermappar skapas.
+- Välj en sparmapp i inställningarna för att använda den som startmapp. Dialogen minns även senast valda mapp; stäng av dialogen om du vill spara direkt i den inställda mappen. Inga undermappar skapas.
 - Svenska och engelska, ljust/mörkt tema och snabbtangenter.
 
 ### Integritet och uppdateringar
@@ -54,7 +54,7 @@ Utskrift och inställningar hanteras lokalt. Tillägget begär webbplatsåtkomst
 
 ### Use
 
-- Click the extension icon, then click **Save PDF**. The save dialog opens in the selected folder each time.
+- Click the extension icon, then click **Save PDF**. The save dialog opens every time and remembers the most recently selected folder.
 - Right-click selected text to save just that text, or choose **Choose an area to save as PDF** and click an area on the page.
 - Enter a page range in the panel, for example `1-3, 5`. Leave it blank to include every page.
 - Add a website in Settings to show the floating PDF button on that site.
@@ -65,7 +65,7 @@ Utskrift och inställningar hanteras lokalt. Tillägget begär webbplatsåtkomst
 - PDF bookmarks, an optional table of contents from headings, and improved page breaks.
 - Optional local analysis removes nearly empty PDF pages.
 - Optional article mode, dark printing, watermark, and large-image optimization.
-- Choose a folder in Settings. The save dialog opens there each time; turn the dialog off to save directly. No subfolders are created.
+- Choose a folder in Settings to use it as the starting folder. The dialog also remembers the most recently selected folder; turn the dialog off to save directly in the configured folder. No subfolders are created.
 - Swedish and English, light/dark themes, and keyboard shortcuts.
 
 ### Privacy and updates

@@ -3,6 +3,7 @@ const DB_VERSION = 1;
 const STORE_NAME = 'saved-location';
 const HANDLE_KEY = 'directory-handle';
 const PICKER_ID_KEY = 'save-picker-id';
+const START_IN_PENDING_KEY = 'start-in-pending';
 const PICKED_FILE_PREFIX = 'picked-file:';
 
 function newPickerId() {
@@ -56,6 +57,33 @@ export async function getSavedDirectoryHandle() {
   return readHandle();
 }
 
+export async function shouldStartInSavedDirectory() {
+  const database = await openDatabase();
+  try {
+    const transaction = database.transaction(STORE_NAME, 'readonly');
+    const request = transaction.objectStore(STORE_NAME).get(START_IN_PENDING_KEY);
+    const pending = await new Promise((resolve, reject) => {
+      request.onsuccess = () => resolve(request.result === true);
+      request.onerror = () => reject(request.error || new Error('Could not read saved-folder start state'));
+    });
+    await transactionDone(transaction);
+    return pending;
+  } finally {
+    database.close();
+  }
+}
+
+export async function clearSavedDirectoryStartIn() {
+  const database = await openDatabase();
+  try {
+    const transaction = database.transaction(STORE_NAME, 'readwrite');
+    transaction.objectStore(STORE_NAME).delete(START_IN_PENDING_KEY);
+    await transactionDone(transaction);
+  } finally {
+    database.close();
+  }
+}
+
 export async function getOrCreateSavePickerId() {
   const database = await openDatabase();
   try {
@@ -86,6 +114,7 @@ export async function saveDirectoryHandle(handle) {
     const store = transaction.objectStore(STORE_NAME);
     store.put(handle, HANDLE_KEY);
     store.put(newPickerId(), PICKER_ID_KEY);
+    store.put(true, START_IN_PENDING_KEY);
     await transactionDone(transaction);
   } finally {
     database.close();
@@ -98,6 +127,7 @@ export async function clearDirectoryHandle() {
     const transaction = database.transaction(STORE_NAME, 'readwrite');
     const store = transaction.objectStore(STORE_NAME);
     store.delete(HANDLE_KEY);
+    store.delete(START_IN_PENDING_KEY);
     store.put(newPickerId(), PICKER_ID_KEY);
     await transactionDone(transaction);
   } finally {

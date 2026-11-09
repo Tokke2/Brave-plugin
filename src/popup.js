@@ -23,6 +23,8 @@ import { buildFilename } from './lib/filename.js';
 import { applyTheme, watchSystemTheme } from './lib/theme.js';
 import {
   getSavedDirectoryHandle,
+  shouldStartInSavedDirectory,
+  clearSavedDirectoryStartIn,
   getOrCreateSavePickerId,
   savePickedFileHandle,
   clearPickedFileHandle
@@ -78,6 +80,7 @@ const state = {
   allowed: false,
   busy: false,
   savedDirectoryHandle: null,
+  startInSavedDirectory: false,
   savePickerId: '',
   captureToken: '',
   captureTitle: ''
@@ -432,6 +435,7 @@ async function renderShortcut() {
 async function refreshSavedDirectoryHandle() {
   try {
     state.savePickerId = await getOrCreateSavePickerId();
+    state.startInSavedDirectory = await shouldStartInSavedDirectory();
     const handle = await getSavedDirectoryHandle();
     if (!handle) {
       state.savedDirectoryHandle = null;
@@ -446,6 +450,7 @@ async function refreshSavedDirectoryHandle() {
     state.savedDirectoryHandle = permission === 'granted' ? handle : null;
   } catch {
     state.savedDirectoryHandle = null;
+    state.startInSavedDirectory = false;
   }
 }
 
@@ -510,8 +515,6 @@ async function savePdf() {
   try {
     if (
       state.settings.file.saveAs &&
-      state.settings.file.rememberLocation &&
-      state.savedDirectoryHandle &&
       typeof window.showSaveFilePicker === 'function'
     ) {
       try {
@@ -519,13 +522,27 @@ async function savePdf() {
           suggestedName: previewFilename() || 'Sida till PDF.pdf',
           types: [{ description: 'PDF', accept: { 'application/pdf': ['.pdf'] } }]
         };
-        if (state.savedDirectoryHandle) pickerOptions.startIn = state.savedDirectoryHandle;
+        if (
+          state.startInSavedDirectory &&
+          state.settings.file.rememberLocation &&
+          state.savedDirectoryHandle
+        ) {
+          pickerOptions.startIn = state.savedDirectoryHandle;
+        }
         if (state.savePickerId) pickerOptions.id = state.savePickerId;
         const fileHandle = await window.showSaveFilePicker(pickerOptions);
+        if (state.startInSavedDirectory) {
+          await clearSavedDirectoryStartIn();
+          state.startInSavedDirectory = false;
+        }
         pickedFileToken = globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
         await savePickedFileHandle(pickedFileToken, fileHandle);
       } catch (error) {
         if (error?.name === 'AbortError') {
+          if (state.startInSavedDirectory) {
+            await clearSavedDirectoryStartIn().catch(() => {});
+            state.startInSavedDirectory = false;
+          }
           if (captureToken) {
             await chrome.runtime.sendMessage({ type: 'DISCARD_CAPTURE', captureToken }).catch(() => {});
             state.captureToken = '';
