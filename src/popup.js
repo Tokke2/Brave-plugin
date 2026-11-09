@@ -78,7 +78,9 @@ const state = {
   allowed: false,
   busy: false,
   savedDirectoryHandle: null,
-  savePickerId: ''
+  savePickerId: '',
+  captureToken: '',
+  captureTitle: ''
 };
 
 const RELEASE_API_URL = 'https://api.github.com/repos/Tokke2/Brave-plugin/releases/latest';
@@ -236,7 +238,7 @@ function previewFilename() {
     return buildFilename({
       template: state.settings.file.template,
       site: host,
-      title: state.tab?.title || host,
+      title: state.captureTitle || state.tab?.title || host,
       date: new Date()
     });
   } catch {
@@ -261,7 +263,7 @@ function computeState() {
   }
 
   const matchedActive = Boolean(state.matchedSite?.enabled);
-  state.allowed = state.printable && (settings.allowAll || matchedActive);
+  state.allowed = Boolean(state.captureToken) || (state.printable && (settings.allowAll || matchedActive));
 }
 
 function setBanner(kind, text) {
@@ -343,6 +345,11 @@ function render() {
     pillClass = 'pill warn';
     dotClass = 'status-dot warn';
     hintText = t(lang, 'popup.hint.internal');
+  } else if (state.captureToken) {
+    pillText = t(lang, 'popup.status.captureReady');
+    pillClass = 'pill ok';
+    dotClass = 'status-dot ok';
+    hintText = t(lang, 'popup.hint.captureReady');
   } else if (allowed) {
     const viaAll = settings.allowAll && !matchedSite?.enabled;
     pillText = t(lang, viaAll ? 'popup.status.allSites' : 'popup.status.selected');
@@ -450,7 +457,17 @@ async function load({ initial = false } = {}) {
   applyI18n(document, state.lang);
 
   if (initial) {
-    const requestedTabId = Number(new URLSearchParams(window.location.search).get('tabId'));
+    const pageParams = new URLSearchParams(window.location.search);
+    state.captureToken = pageParams.get('captureToken') || '';
+    if (state.captureToken) {
+      try {
+        const stored = await chrome.storage.session.get(`pending-capture:${state.captureToken}`);
+        state.captureTitle = String(stored?.[`pending-capture:${state.captureToken}`]?.title || '');
+      } catch {
+        state.captureTitle = '';
+      }
+    }
+    const requestedTabId = Number(pageParams.get('tabId'));
     let tab = null;
     if (Number.isInteger(requestedTabId) && requestedTabId > 0) {
       try {
@@ -484,6 +501,7 @@ async function savePdf() {
     setBanner('error', t(state.lang, 'errors.pageRangeInvalid'));
     return;
   }
+  const captureToken = state.captureToken;
   state.busy = true;
   setPrimary({ loading: true, label: t(state.lang, 'popup.saving'), disabled: true });
   els.secondary.disabled = true;
@@ -508,6 +526,10 @@ async function savePdf() {
         await savePickedFileHandle(pickedFileToken, fileHandle);
       } catch (error) {
         if (error?.name === 'AbortError') {
+          if (captureToken) {
+            await chrome.runtime.sendMessage({ type: 'DISCARD_CAPTURE', captureToken }).catch(() => {});
+            state.captureToken = '';
+          }
           setBannerActions(null);
           setBanner('info', t(state.lang, 'errors.canceled'));
           return;
@@ -518,12 +540,14 @@ async function savePdf() {
     }
 
     const response = await chrome.runtime.sendMessage({
-      type: 'SAVE_PDF',
+      type: captureToken ? 'SAVE_CAPTURED_PDF' : 'SAVE_PDF',
       tabId: state.tab?.id,
       url: state.url,
       pageRanges,
-      pickedFileToken
+      pickedFileToken,
+      captureToken
     });
+    if (captureToken) state.captureToken = '';
 
     if (response?.ok) {
       const removedPages = Number(response.blankPagesRemoved) || 0;
@@ -550,6 +574,10 @@ async function savePdf() {
       setBannerActions(null);
     }
   } catch {
+    if (captureToken) {
+      await chrome.runtime.sendMessage({ type: 'DISCARD_CAPTURE', captureToken }).catch(() => {});
+      state.captureToken = '';
+    }
     setBanner('error', t(state.lang, 'errors.unexpected'));
     setBannerActions(null);
   } finally {

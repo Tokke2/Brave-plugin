@@ -32,6 +32,7 @@ const PANEL_MENU_ID = 'page-to-pdf-open-panel';
 const UPDATE_MENU_ID = 'page-to-pdf-check-updates';
 const RELOAD_MENU_ID = 'page-to-pdf-reload';
 const UPDATE_API_PERMISSION = 'https://api.github.com/*';
+const PENDING_CAPTURE_PREFIX = 'pending-capture:';
 const BADGE_BUSY = '…';
 const BADGE_OK = '✓';
 const BADGE_FAIL = '!';
@@ -1183,6 +1184,7 @@ async function runSave(tab, options = {}) {
 async function runCapturedSave(tab, article, options = {}) {
   const settings = await getSettings();
   const lang = currentLang(settings);
+  const pickedFileToken = typeof options.pickedFileToken === 'string' ? options.pickedFileToken : '';
   const pageRanges = normalizePageRanges(options.pageRanges);
   if (pageRanges === null) return { ok: false, error: 'pageRangeInvalid', message: errorText(lang, 'pageRangeInvalid') };
   if (!isPrintableUrl(tab?.url)) return { ok: false, error: 'restricted', message: errorText(lang, 'restricted') };
@@ -1203,7 +1205,7 @@ async function runCapturedSave(tab, article, options = {}) {
     }
     const title = String(article.title || tab.title || 'Valt innehåll').slice(0, 180);
     const requestedFilename = makeFilename(tab, settings, title);
-    const saved = await savePdfFile(base64, requestedFilename, settings);
+    const saved = await savePdfFile(base64, requestedFilename, settings, pickedFileToken);
     const { filename, filePath, downloadId, directSaved, locationFallback } = saved;
     await addHistory({ filename, filePath, url: tab.url, title, downloadId });
     let autoOpenFailed = false;
@@ -1440,9 +1442,11 @@ function elementPicker(language) {
     document.documentElement.appendChild(notice);
     chrome.runtime.sendMessage({ type: 'ELEMENT_SELECTED', title: document.title, url: location.href, html })
       .then((response) => {
-        notice.textContent = response?.ok
-          ? (language === 'sv' ? 'PDF sparad.' : 'PDF saved.')
-          : (response?.message || (language === 'sv' ? 'PDF kunde inte skapas.' : 'Could not create PDF.'));
+        notice.textContent = response?.pickerOpened
+          ? (language === 'sv' ? 'Sparpanelen öppnades. Klicka på Spara PDF för att välja fil.' : 'The save panel opened. Click Save PDF to choose a file.')
+          : response?.ok
+            ? (language === 'sv' ? 'PDF sparad.' : 'PDF saved.')
+            : (response?.message || (language === 'sv' ? 'PDF kunde inte skapas.' : 'Could not create PDF.'));
         setTimeout(() => notice.remove(), 5000);
       })
       .catch(() => {
@@ -1613,14 +1617,32 @@ chrome.commands.onCommand.addListener((command) => {
   })();
 });
 
-function openPanelTab(tab, { checkUpdates = false } = {}) {
+function openPanelTab(tab, { checkUpdates = false, captureToken = '' } = {}) {
   const params = new URLSearchParams();
   if (typeof tab?.id === 'number') params.set('tabId', String(tab.id));
   if (checkUpdates) params.set('checkUpdates', '1');
+  if (captureToken) params.set('captureToken', captureToken);
   const query = params.toString();
   return chrome.tabs.create({
     url: `${chrome.runtime.getURL('src/popup.html')}${query ? `?${query}` : ''}`
   });
+}
+
+async function openCapturedSavePanel(tab, article) {
+  if (
+    !tab || typeof tab.id !== 'number' || !isPrintableUrl(tab.url) ||
+    !article?.html || article.html.length > 1_000_000
+  ) return handleCapturedSave(tab, article);
+  const token = globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const key = `${PENDING_CAPTURE_PREFIX}${token}`;
+  try {
+    await chrome.storage.session.set({ [key]: article });
+    await openPanelTab(tab, { captureToken: token });
+    return { ok: true, pickerOpened: true };
+  } catch {
+    await chrome.storage.session.remove(key).catch(() => {});
+    return handleCapturedSave(tab, article);
+  }
 }
 
 chrome.contextMenus.onClicked.addListener((info, tab) => {
@@ -1633,7 +1655,7 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
       .split(/\n\s*\n/)
       .map((paragraph) => `<p>${paragraph.replace(/[&<>"']/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character])}</p>`)
       .join('');
-    void handleCapturedSave(tab, {
+    void openCapturedSavePanel(tab, {
       title: `${tab.title || 'Valt innehåll'} – markerad text`,
       url: tab.url,
       html,
@@ -1733,7 +1755,35 @@ async function handleMessage(message, sender) {
         html: typeof message.html === 'string' ? message.html : '',
         words: 0
       };
-      return handleCapturedSave(tab, article);
+      return openCapturedSavePanel(tab, article);
+    }
+
+    case 'SAVE_CAPTURED_PDF': {
+      const token = typeof message.captureToken === 'string' ? message.captureToken : '';
+      if (!token || !sender?.url?.startsWith(chrome.runtime.getURL(''))) {
+        return { ok: false, error: 'unexpected' };
+      }
+      const key = `${PENDING_CAPTURE_PREFIX}${token}`;
+      const stored = await chrome.storage.session.get(key);
+      const article = stored?.[key];
+      await chrome.storage.session.remove(key);
+      if (!article) return { ok: false, error: 'unexpected' };
+      let tab = null;
+      if (typeof message.tabId === 'number') {
+        try { tab = await chrome.tabs.get(message.tabId); } catch { tab = null; }
+      }
+      if (!tab) return { ok: false, error: 'noTab' };
+      return handleCapturedSave(tab, article, {
+        pageRanges: typeof message.pageRanges === 'string' ? message.pageRanges : '',
+        pickedFileToken: typeof message.pickedFileToken === 'string' ? message.pickedFileToken : ''
+      });
+    }
+
+    case 'DISCARD_CAPTURE': {
+      if (!sender?.url?.startsWith(chrome.runtime.getURL(''))) return { ok: false, error: 'unexpected' };
+      const token = typeof message.captureToken === 'string' ? message.captureToken : '';
+      if (token) await chrome.storage.session.remove(`${PENDING_CAPTURE_PREFIX}${token}`);
+      return { ok: true };
     }
 
     case 'OPEN_DOWNLOAD':
