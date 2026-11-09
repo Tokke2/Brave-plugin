@@ -2,6 +2,14 @@ const DB_NAME = 'sida-till-pdf';
 const DB_VERSION = 1;
 const STORE_NAME = 'saved-location';
 const HANDLE_KEY = 'directory-handle';
+const PICKER_ID_KEY = 'save-picker-id';
+const PICKED_FILE_PREFIX = 'picked-file:';
+
+function newPickerId() {
+  const random = globalThis.crypto?.randomUUID?.().replaceAll('-', '').slice(0, 24)
+    || `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 14)}`;
+  return `st-${random}`.slice(0, 32);
+}
 
 function openDatabase() {
   return new Promise((resolve, reject) => {
@@ -48,12 +56,36 @@ export async function getSavedDirectoryHandle() {
   return readHandle();
 }
 
+export async function getOrCreateSavePickerId() {
+  const database = await openDatabase();
+  try {
+    let transaction = database.transaction(STORE_NAME, 'readonly');
+    let request = transaction.objectStore(STORE_NAME).get(PICKER_ID_KEY);
+    const existingId = await new Promise((resolve, reject) => {
+      request.onsuccess = () => resolve(request.result || null);
+      request.onerror = () => reject(request.error || new Error('Could not read save picker id'));
+    });
+    await transactionDone(transaction);
+    if (typeof existingId === 'string' && existingId) return existingId;
+
+    const pickerId = newPickerId();
+    transaction = database.transaction(STORE_NAME, 'readwrite');
+    transaction.objectStore(STORE_NAME).put(pickerId, PICKER_ID_KEY);
+    await transactionDone(transaction);
+    return pickerId;
+  } finally {
+    database.close();
+  }
+}
+
 export async function saveDirectoryHandle(handle) {
   if (!handle || handle.kind !== 'directory') throw new TypeError('A directory handle is required');
   const database = await openDatabase();
   try {
     const transaction = database.transaction(STORE_NAME, 'readwrite');
-    transaction.objectStore(STORE_NAME).put(handle, HANDLE_KEY);
+    const store = transaction.objectStore(STORE_NAME);
+    store.put(handle, HANDLE_KEY);
+    store.put(newPickerId(), PICKER_ID_KEY);
     await transactionDone(transaction);
   } finally {
     database.close();
@@ -64,7 +96,50 @@ export async function clearDirectoryHandle() {
   const database = await openDatabase();
   try {
     const transaction = database.transaction(STORE_NAME, 'readwrite');
-    transaction.objectStore(STORE_NAME).delete(HANDLE_KEY);
+    const store = transaction.objectStore(STORE_NAME);
+    store.delete(HANDLE_KEY);
+    store.put(newPickerId(), PICKER_ID_KEY);
+    await transactionDone(transaction);
+  } finally {
+    database.close();
+  }
+}
+
+export async function savePickedFileHandle(token, handle) {
+  if (!token || !handle || handle.kind !== 'file') throw new TypeError('A picked file handle and token are required');
+  const database = await openDatabase();
+  try {
+    const transaction = database.transaction(STORE_NAME, 'readwrite');
+    transaction.objectStore(STORE_NAME).put(handle, `${PICKED_FILE_PREFIX}${token}`);
+    await transactionDone(transaction);
+  } finally {
+    database.close();
+  }
+}
+
+export async function getPickedFileHandle(token) {
+  if (!token) return null;
+  const database = await openDatabase();
+  try {
+    const transaction = database.transaction(STORE_NAME, 'readonly');
+    const request = transaction.objectStore(STORE_NAME).get(`${PICKED_FILE_PREFIX}${token}`);
+    const handle = await new Promise((resolve, reject) => {
+      request.onsuccess = () => resolve(request.result || null);
+      request.onerror = () => reject(request.error || new Error('Could not read picked file'));
+    });
+    await transactionDone(transaction);
+    return handle;
+  } finally {
+    database.close();
+  }
+}
+
+export async function clearPickedFileHandle(token) {
+  if (!token) return;
+  const database = await openDatabase();
+  try {
+    const transaction = database.transaction(STORE_NAME, 'readwrite');
+    transaction.objectStore(STORE_NAME).delete(`${PICKED_FILE_PREFIX}${token}`);
     await transactionDone(transaction);
   } finally {
     database.close();

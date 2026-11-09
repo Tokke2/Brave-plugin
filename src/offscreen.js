@@ -5,7 +5,11 @@
 
 import * as pdfjsLib from './vendor/pdfjs/pdf.min.mjs';
 import { isBlankPageRaster } from './lib/pdf-analysis.js';
-import { getSavedDirectoryHandle } from './lib/directory-storage.js';
+import {
+  getSavedDirectoryHandle,
+  getPickedFileHandle,
+  clearPickedFileHandle
+} from './lib/directory-storage.js';
 
 const REVOKE_AFTER_MS = 120000;
 const CLOSE_AFTER_IDLE_MS = 180000;
@@ -91,6 +95,28 @@ async function writeToSavedDirectory(base64, requestedName) {
     throw error;
   }
   return { ok: true, filename, folderName: directory.name };
+}
+
+async function writeToPickedFile(base64, token) {
+  const file = await getPickedFileHandle(token);
+  if (!file || file.kind !== 'file') return { ok: false, reason: 'missing-handle' };
+  let permission = 'denied';
+  try {
+    permission = await file.queryPermission({ mode: 'readwrite' });
+  } catch {
+    /* A revoked handle falls back to the browser's normal save dialog. */
+  }
+  if (permission !== 'granted') return { ok: false, reason: 'permission' };
+
+  const writable = await file.createWritable({ keepExistingData: false });
+  try {
+    await writable.write(base64ToBytes(base64));
+    await writable.close();
+  } catch (error) {
+    await writable.abort().catch(() => {});
+    throw error;
+  }
+  return { ok: true, filename: sanitizePdfName(file.name) };
 }
 
 function revoke(url) {
@@ -184,6 +210,27 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     clearTimeout(idleTimer);
     directoryWriteQueue = directoryWriteQueue
       .then(() => writeToSavedDirectory(message.base64, message.filename))
+      .then((result) => {
+        scheduleIdleClose();
+        sendResponse(result);
+      })
+      .catch((error) => {
+        scheduleIdleClose();
+        sendResponse({ ok: false, reason: 'write-failed', error: String(error?.message || error) });
+      });
+    return true;
+  }
+
+  if (message.type === 'SAVE_TO_PICKED_FILE') {
+    clearTimeout(idleTimer);
+    directoryWriteQueue = directoryWriteQueue
+      .then(async () => {
+        try {
+          return await writeToPickedFile(message.base64, message.token);
+        } finally {
+          await clearPickedFileHandle(message.token).catch(() => {});
+        }
+      })
       .then((result) => {
         scheduleIdleClose();
         sendResponse(result);

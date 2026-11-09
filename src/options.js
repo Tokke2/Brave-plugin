@@ -203,7 +203,9 @@ function renderAll() {
   els.fileTemplate.value = settings.file.template;
   els.fileSaveAs.checked = settings.file.saveAs;
   const saveHintKey = settings.file.saveAs
-    ? 'options.file.saveAsHintOn'
+    ? settings.file.rememberLocation
+      ? 'options.file.saveAsHintOnRemembered'
+      : 'options.file.saveAsHintOn'
     : settings.file.rememberLocation
       ? 'options.file.saveAsHintRemembered'
       : 'options.file.saveAsHint';
@@ -608,7 +610,6 @@ els.chooseSaveFolder.addEventListener('click', async () => {
     await saveDirectoryHandle(handle);
     await persist((draft) => {
       draft.file.rememberLocation = true;
-      draft.file.saveAs = false;
     }, { message: t(state.lang, 'options.file.folderSaved', { folder: handle.name }) });
   } catch (error) {
     if (error?.name !== 'AbortError') showBanner('error', t(state.lang, 'options.file.folderFailed'));

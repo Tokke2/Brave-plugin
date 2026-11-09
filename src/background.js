@@ -860,6 +860,26 @@ async function savePdfToRememberedLocation(base64, filename) {
   }
 }
 
+async function savePdfToPickedFile(base64, token) {
+  try {
+    if (!(await ensureOffscreenDocument())) return null;
+    const response = await new Promise((resolve, reject) => {
+      chrome.runtime.sendMessage(
+        { target: 'offscreen', type: 'SAVE_TO_PICKED_FILE', base64, token },
+        (result) => {
+          const error = chrome.runtime.lastError;
+          if (error) reject(error);
+          else resolve(result);
+        }
+      );
+    });
+    return response?.ok === true ? response : null;
+  } catch (error) {
+    console.warn('Den valda PDF-filen kunde inte användas:', error);
+    return null;
+  }
+}
+
 async function removeBlankPagesFromPdf(base64) {
   try {
     if (!(await ensureOffscreenDocument())) return { base64, removed: 0, skipped: true };
@@ -929,9 +949,26 @@ async function downloadPdf(base64, filename, settings) {
   }
 }
 
-async function savePdfFile(base64, requestedFilename, settings) {
+async function savePdfFile(base64, requestedFilename, settings, pickedFileToken = '') {
   let locationFallback = false;
-  if (settings.file.rememberLocation && !settings.file.saveAs) {
+  if (pickedFileToken) {
+    const picked = await savePdfToPickedFile(base64, pickedFileToken);
+    if (picked) {
+      return {
+        filename: picked.filename,
+        filePath: picked.filename,
+        downloadId: null,
+        blobUrl: '',
+        directSaved: true,
+        locationFallback: false
+      };
+    }
+    // Permission or writing failed after the picker; never silently use another folder.
+    locationFallback = true;
+    settings = { ...settings, file: { ...settings.file, saveAs: true } };
+  }
+
+  if (!pickedFileToken && settings.file.rememberLocation && !settings.file.saveAs) {
     const remembered = await savePdfToRememberedLocation(base64, requestedFilename);
     if (remembered) {
       return {
@@ -1047,6 +1084,7 @@ async function runSave(tab, options = {}) {
   // Snabbkommandot utan dialog (eller Alt-klick på sidknappen) överstyr
   // inställningen för just den här sparningen.
   const forceSaveAs = typeof options.forceSaveAs === 'boolean' ? options.forceSaveAs : null;
+  const pickedFileToken = typeof options.pickedFileToken === 'string' ? options.pickedFileToken : '';
   const pageRanges = normalizePageRanges(options.pageRanges);
   if (pageRanges === null) {
     const message = errorText(lang, 'pageRangeInvalid');
@@ -1093,7 +1131,7 @@ async function runSave(tab, options = {}) {
     }
 
     const requestedFilename = makeFilename(tab, settings);
-    const saved = await savePdfFile(base64, requestedFilename, effective);
+    const saved = await savePdfFile(base64, requestedFilename, effective, pickedFileToken);
     const { filename, filePath, downloadId, directSaved, locationFallback } = saved;
 
     await addHistory({
@@ -1562,15 +1600,16 @@ chrome.action.onClicked.addListener((tab) => {
 
 chrome.commands.onCommand.addListener((command) => {
   if (command !== 'save-pdf' && command !== 'save-pdf-quiet') return;
-  // Snabbkommandon sparar den aktiva sidan; save-pdf-quiet hoppar över
-  // spar-dialogen och lägger filen direkt i webbläsarens hämtningsmapp.
-  const options = {
-    allowUnselected: true,
-    ...(command === 'save-pdf-quiet' ? { forceSaveAs: false } : {})
-  };
+  // Dialogsparning öppnas i panelen så filväljaren kan startas från en användarklickning.
+  // save-pdf-quiet sparar direkt i webbläsarens hämtningsmapp.
   void (async () => {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (tab) await handleSaveRequest(tab, options);
+    if (!tab) return;
+    if (command === 'save-pdf') {
+      await openPanelTab(tab);
+    } else {
+      await handleSaveRequest(tab, { allowUnselected: true, forceSaveAs: false });
+    }
   })();
 });
 
@@ -1586,7 +1625,7 @@ function openPanelTab(tab, { checkUpdates = false } = {}) {
 
 chrome.contextMenus.onClicked.addListener((info, tab) => {
   if (info.menuItemId === MENU_ID && tab) {
-    void handleSaveRequest(tab);
+    void openPanelTab(tab);
     return;
   }
   if (info.menuItemId === SELECTION_MENU_ID && tab && info.selectionText) {
@@ -1666,9 +1705,22 @@ async function handleMessage(message, sender) {
       if (!tab.url && typeof message.url === 'string') {
         tab = { ...tab, url: message.url };
       }
+      const settings = await getSettings();
+      const fromContentScript = Boolean(
+        sender?.tab && !String(sender.url || '').startsWith(chrome.runtime.getURL(''))
+      );
+      if (fromContentScript && !message.pickedFileToken && settings.file.saveAs && message.forceSaveAs !== false) {
+        await openPanelTab(tab);
+        await sendToast(tab.id, {
+          state: 'info',
+          text: t(currentLang(settings), 'toast.openSavePanel')
+        });
+        return { ok: true, pickerOpened: true };
+      }
       return handleSaveRequest(tab, {
         forceSaveAs: typeof message.forceSaveAs === 'boolean' ? message.forceSaveAs : undefined,
-        pageRanges: typeof message.pageRanges === 'string' ? message.pageRanges : ''
+        pageRanges: typeof message.pageRanges === 'string' ? message.pageRanges : '',
+        pickedFileToken: typeof message.pickedFileToken === 'string' ? message.pickedFileToken : ''
       });
     }
 

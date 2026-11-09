@@ -21,6 +21,12 @@ import { resolveLang, applyI18n, t } from './lib/i18n.js';
 import { releaseUnusedOrigin } from './lib/access.js';
 import { buildFilename } from './lib/filename.js';
 import { applyTheme, watchSystemTheme } from './lib/theme.js';
+import {
+  getSavedDirectoryHandle,
+  getOrCreateSavePickerId,
+  savePickedFileHandle,
+  clearPickedFileHandle
+} from './lib/directory-storage.js';
 import { normalizePageRanges } from './lib/print.js';
 import { compareVersions, diffFileHashes, gitBlobSha, TRACKED_FILES } from './lib/updates.js';
 
@@ -70,7 +76,9 @@ const state = {
   printable: false,
   matchedSite: null,
   allowed: false,
-  busy: false
+  busy: false,
+  savedDirectoryHandle: null,
+  savePickerId: ''
 };
 
 const RELEASE_API_URL = 'https://api.github.com/repos/Tokke2/Brave-plugin/releases/latest';
@@ -309,11 +317,16 @@ function render() {
   els.siteName.textContent = hostname || t(lang, 'popup.openPage');
   els.siteName.title = hostname;
   els.saveAs.checked = settings.file.saveAs;
-  const saveAsHintKey = settings.file.saveAs
-    ? 'popup.saveAsHintOn'
-    : settings.file.rememberLocation
-      ? 'popup.saveAsHintRemembered'
-      : 'popup.saveAsHintOff';
+  const hasUsableSavedDirectory = settings.file.rememberLocation && Boolean(state.savedDirectoryHandle);
+  const saveAsHintKey = settings.file.rememberLocation && !hasUsableSavedDirectory
+    ? 'popup.saveAsHintFolderUnavailable'
+    : settings.file.saveAs
+      ? hasUsableSavedDirectory
+        ? 'popup.saveAsHintOnRemembered'
+        : 'popup.saveAsHintOn'
+      : hasUsableSavedDirectory
+        ? 'popup.saveAsHintRemembered'
+        : 'popup.saveAsHintOff';
   els.saveAsNote.textContent = t(lang, saveAsHintKey);
 
   const preview = previewFilename();
@@ -409,8 +422,29 @@ async function renderShortcut() {
   }
 }
 
+async function refreshSavedDirectoryHandle() {
+  try {
+    state.savePickerId = await getOrCreateSavePickerId();
+    const handle = await getSavedDirectoryHandle();
+    if (!handle) {
+      state.savedDirectoryHandle = null;
+      return;
+    }
+    let permission = 'prompt';
+    try {
+      permission = await handle.queryPermission({ mode: 'readwrite' });
+    } catch {
+      permission = 'denied';
+    }
+    state.savedDirectoryHandle = permission === 'granted' ? handle : null;
+  } catch {
+    state.savedDirectoryHandle = null;
+  }
+}
+
 async function load({ initial = false } = {}) {
   state.settings = await getSettings();
+  await refreshSavedDirectoryHandle();
   state.lang = resolveLang(state.settings.language, chrome.i18n.getUILanguage());
   applyTheme(state.settings.theme);
   applyI18n(document, state.lang);
@@ -453,13 +487,42 @@ async function savePdf() {
   state.busy = true;
   setPrimary({ loading: true, label: t(state.lang, 'popup.saving'), disabled: true });
   els.secondary.disabled = true;
+  let pickedFileToken = '';
 
   try {
+    if (
+      state.settings.file.saveAs &&
+      state.settings.file.rememberLocation &&
+      state.savedDirectoryHandle &&
+      typeof window.showSaveFilePicker === 'function'
+    ) {
+      try {
+        const pickerOptions = {
+          suggestedName: previewFilename() || 'Sida till PDF.pdf',
+          types: [{ description: 'PDF', accept: { 'application/pdf': ['.pdf'] } }]
+        };
+        if (state.savedDirectoryHandle) pickerOptions.startIn = state.savedDirectoryHandle;
+        if (state.savePickerId) pickerOptions.id = state.savePickerId;
+        const fileHandle = await window.showSaveFilePicker(pickerOptions);
+        pickedFileToken = globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+        await savePickedFileHandle(pickedFileToken, fileHandle);
+      } catch (error) {
+        if (error?.name === 'AbortError') {
+          setBannerActions(null);
+          setBanner('info', t(state.lang, 'errors.canceled'));
+          return;
+        }
+        // If the custom picker is unavailable, the background uses the browser dialog.
+        console.warn('Den anpassade spar-dialogen kunde inte öppnas:', error);
+      }
+    }
+
     const response = await chrome.runtime.sendMessage({
       type: 'SAVE_PDF',
       tabId: state.tab?.id,
       url: state.url,
-      pageRanges
+      pageRanges,
+      pickedFileToken
     });
 
     if (response?.ok) {
@@ -490,6 +553,7 @@ async function savePdf() {
     setBanner('error', t(state.lang, 'errors.unexpected'));
     setBannerActions(null);
   } finally {
+    if (pickedFileToken) await clearPickedFileHandle(pickedFileToken).catch(() => {});
     state.busy = false;
     render();
     els.secondary.disabled = false;
@@ -528,11 +592,8 @@ async function addSiteAndSave() {
   render();
   chrome.runtime.sendMessage({ type: 'SYNC_CONTENT_SCRIPTS' }).catch(() => {});
 
-  await savePdf();
-
-  if (!granted) {
-    setBanner('info', t(state.lang, 'popup.hint.addNoAccess'));
-  }
+  if (!granted) setBanner('info', t(state.lang, 'popup.hint.addNoAccess'));
+  else setBanner('info', t(state.lang, 'popup.hint.siteAddedClickSave'));
 }
 
 async function removeMatchedSite() {
@@ -610,6 +671,7 @@ els.checkUpdates.addEventListener('click', () => void checkForUpdates());
 onSettingsChanged(() => {
   void (async () => {
     state.settings = await getSettings();
+    await refreshSavedDirectoryHandle();
     state.lang = resolveLang(state.settings.language, chrome.i18n.getUILanguage());
     applyTheme(state.settings.theme);
     applyI18n(document, state.lang);
