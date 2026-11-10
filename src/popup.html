@@ -10,6 +10,7 @@
     <link rel="stylesheet" href="popup.css" />
   </head>
   <body class="popup">
+    <a class="skip-link" href="#site-card" data-i18n="a11y.skipContent">Hoppa till huvudinnehåll</a>
     <header class="popup-header">
       <img class="app-icon" src="../icons/icon48.png" width="34" height="34" alt="" />
       <div class="titles">
@@ -28,7 +29,8 @@
       </button>
     </header>
 
-    <section class="site-card" aria-live="polite">
+    <main id="main-content">
+    <section id="site-card" class="site-card" tabindex="-1" aria-live="polite">
       <div class="site-row">
         <span id="status-dot" class="status-dot" aria-hidden="true"></span>
         <div class="site-text">
@@ -101,6 +103,7 @@
       </a>
       <ul id="changed-files" class="changed-files" hidden></ul>
     </section>
+    </main>
 
     <footer class="popup-footer">
       <span id="shortcut" class="muted"></span>

@@ -8,7 +8,7 @@
  *  – snabbkommando, högerklicksmeny, badge och historik
  */
 
-import { getSettings, addHistory } from './lib/settings.js';
+import { getSettings, addHistory, applySitePdfProfile } from './lib/settings.js';
 import { matchesUrl, originPatternFor, isPrintableUrl } from './lib/sites.js';
 import { buildFilename } from './lib/filename.js';
 import {
@@ -53,6 +53,14 @@ function currentLang(settings) {
   return resolveLang(settings.language, chrome.i18n.getUILanguage());
 }
 
+function sendSaveProgress(tabId, stage) {
+  try {
+    chrome.runtime.sendMessage({ type: 'SAVE_PROGRESS', tabId, stage }).catch(() => {});
+  } catch {
+    /* The popup may have closed; progress is best-effort. */
+  }
+}
+
 function errorText(lang, code) {
   const known = [
     'restricted',
@@ -75,6 +83,11 @@ function isAllowedUrl(url, settings) {
   if (!isPrintableUrl(url)) return false;
   if (settings.allowAll) return true;
   return settings.sites.some((site) => site.enabled && matchesUrl(url, site.pattern));
+}
+
+function settingsForSite(url, settings) {
+  const site = settings.sites.find((item) => item.enabled && matchesUrl(url, item.pattern));
+  return applySitePdfProfile(settings, site?.pdfProfile);
 }
 
 /* ------------------------------------------------------------------ */
@@ -842,12 +855,12 @@ async function makeBlobUrl(base64) {
   return response.url;
 }
 
-async function savePdfToRememberedLocation(base64, filename) {
+async function savePdfToRememberedLocation(base64, filename, conflictAction) {
   try {
     if (!(await ensureOffscreenDocument())) return null;
     const response = await new Promise((resolve, reject) => {
       chrome.runtime.sendMessage(
-        { target: 'offscreen', type: 'SAVE_TO_REMEMBERED_FOLDER', base64, filename },
+        { target: 'offscreen', type: 'SAVE_TO_REMEMBERED_FOLDER', base64, filename, conflictAction },
         (result) => {
           const error = chrome.runtime.lastError;
           if (error) reject(error);
@@ -913,7 +926,7 @@ function downloadUrl(url, filename, settings) {
         url,
         filename,
         saveAs: !!settings.file.saveAs,
-        conflictAction: 'uniquify'
+        conflictAction: settings.file.conflictAction === 'overwrite' ? 'overwrite' : 'uniquify'
       },
       (downloadId) => {
         const error = chrome.runtime.lastError;
@@ -971,7 +984,7 @@ async function savePdfFile(base64, requestedFilename, settings, pickedFileToken 
   }
 
   if (!pickedFileToken && settings.file.rememberLocation && !settings.file.saveAs) {
-    const remembered = await savePdfToRememberedLocation(base64, requestedFilename);
+    const remembered = await savePdfToRememberedLocation(base64, requestedFilename, settings.file.conflictAction);
     if (remembered) {
       return {
         filename: remembered.filename,
@@ -1092,10 +1105,11 @@ async function runSave(tab, options = {}) {
     const message = errorText(lang, 'pageRangeInvalid');
     return { ok: false, error: 'pageRangeInvalid', message };
   }
+  const pdfSettings = settingsForSite(tab.url, settings);
   const effective =
     forceSaveAs === null
-      ? settings
-      : { ...settings, file: { ...settings.file, saveAs: forceSaveAs } };
+      ? pdfSettings
+      : { ...pdfSettings, file: { ...settings.file, saveAs: forceSaveAs } };
 
   if (!isPrintableUrl(tab.url)) {
     const message = errorText(lang, 'restricted');
@@ -1115,23 +1129,27 @@ async function runSave(tab, options = {}) {
 
   await setBadge(tabId, BADGE_BUSY, '#6b7280');
   await sendToast(tabId, { state: 'saving', text: t(lang, 'toast.saving') });
+  sendSaveProgress(tabId, 'preparing');
 
   try {
+    sendSaveProgress(tabId, 'printing');
     let base64 = null;
     let readerFallback = false;
 
-    if (settings.pdf.reader) {
-      base64 = await printReaderPdf(tab, settings, { pageRanges });
+    if (pdfSettings.pdf.reader) {
+      base64 = await printReaderPdf(tab, pdfSettings, { pageRanges });
       readerFallback = !base64;
     }
-    if (!base64) base64 = await printTabToPdf(tabId, settings, tab, { pageRanges });
+    if (!base64) base64 = await printTabToPdf(tabId, pdfSettings, tab, { pageRanges });
     let blankPagesRemoved = 0;
-    if (settings.pdf.removeBlankPages) {
+    if (pdfSettings.pdf.removeBlankPages) {
+      sendSaveProgress(tabId, 'analyzing');
       const cleaned = await removeBlankPagesFromPdf(base64);
       base64 = cleaned.base64;
       blankPagesRemoved = cleaned.removed || 0;
     }
 
+    sendSaveProgress(tabId, 'saving');
     const requestedFilename = makeFilename(tab, settings);
     const saved = await savePdfFile(base64, requestedFilename, effective, pickedFileToken);
     const { filename, filePath, downloadId, directSaved, locationFallback } = saved;
@@ -1144,7 +1162,7 @@ async function runSave(tab, options = {}) {
       downloadId
     });
     let autoOpenFailed = false;
-    if (settings.pdf.openAfterSave) {
+    if (pdfSettings.pdf.openAfterSave) {
       if (directSaved) {
         try {
           autoOpenFailed = !(await openPdfBlobUrl(await makeBlobUrl(base64)));
@@ -1184,6 +1202,7 @@ async function runSave(tab, options = {}) {
 
 async function runCapturedSave(tab, article, options = {}) {
   const settings = await getSettings();
+  const pdfSettings = settingsForSite(tab.url, settings);
   const lang = currentLang(settings);
   const pickedFileToken = typeof options.pickedFileToken === 'string' ? options.pickedFileToken : '';
   const pageRanges = normalizePageRanges(options.pageRanges);
@@ -1195,22 +1214,26 @@ async function runCapturedSave(tab, article, options = {}) {
 
   await setBadge(tab.id, BADGE_BUSY, '#6b7280');
   await sendToast(tab.id, { state: 'saving', text: t(lang, 'toast.saving') });
+  sendSaveProgress(tab.id, 'preparing');
   try {
-    let base64 = await printReaderContentPdf(tab, settings, article, { pageRanges });
+    sendSaveProgress(tab.id, 'printing');
+    let base64 = await printReaderContentPdf(tab, pdfSettings, article, { pageRanges });
     if (!base64) throw new PdfError('print', 'Kunde inte skapa PDF av det valda innehållet');
     let blankPagesRemoved = 0;
-    if (settings.pdf.removeBlankPages) {
+    if (pdfSettings.pdf.removeBlankPages) {
+      sendSaveProgress(tab.id, 'analyzing');
       const cleaned = await removeBlankPagesFromPdf(base64);
       base64 = cleaned.base64;
       blankPagesRemoved = cleaned.removed || 0;
     }
     const title = String(article.title || tab.title || 'Valt innehåll').slice(0, 180);
+    sendSaveProgress(tab.id, 'saving');
     const requestedFilename = makeFilename(tab, settings, title);
-    const saved = await savePdfFile(base64, requestedFilename, settings, pickedFileToken);
+    const saved = await savePdfFile(base64, requestedFilename, pdfSettings, pickedFileToken);
     const { filename, filePath, downloadId, directSaved, locationFallback } = saved;
     await addHistory({ filename, filePath, url: tab.url, title, downloadId });
     let autoOpenFailed = false;
-    if (settings.pdf.openAfterSave) {
+    if (pdfSettings.pdf.openAfterSave) {
       if (directSaved) {
         try {
           autoOpenFailed = !(await openPdfBlobUrl(await makeBlobUrl(base64)));

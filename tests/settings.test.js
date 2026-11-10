@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import {
   DEFAULT_SETTINGS,
   mergeSettings,
+  applySitePdfProfile,
   normalizeSite,
   normalizeTheme,
   createId
@@ -42,6 +43,9 @@ test('spara-dialogen är på som standard och slås på vid migrering', () => {
   assert.equal(mergeSettings({}).file.saveAs, true);
   assert.equal(mergeSettings({}).file.rememberLocation, false);
   assert.equal(mergeSettings({ file: { rememberLocation: true } }).file.rememberLocation, true);
+  assert.equal(mergeSettings({}).file.conflictAction, 'uniquify');
+  assert.equal(mergeSettings({ file: { conflictAction: 'overwrite' } }).file.conflictAction, 'overwrite');
+  assert.equal(mergeSettings({ file: { conflictAction: 'unexpected' } }).file.conflictAction, 'uniquify');
   // Gamla installationer hade tyst nedladdning – nu frågar vi i stället.
   assert.equal(mergeSettings({ version: 2, file: { saveAs: false } }).file.saveAs, true);
   // Har man aktivt stängt av den i version 3 respekteras det.
@@ -98,6 +102,25 @@ test('sajtlistan städas och begränsas', () => {
   assert.ok(settings.sites[0].id);
   assert.equal(settings.sites[1].id, 'fast');
   assert.equal(settings.sites[1].enabled, true);
+  assert.equal(settings.sites[0].pdfProfile, 'default');
+});
+
+test('profiler ger per-site PDF-val utan att ändra globala A4-regler', () => {
+  const globalSettings = mergeSettings({ pdf: { format: 'A3', autoScale: false } });
+  const dark = applySitePdfProfile(globalSettings, 'dark');
+  assert.equal(dark.pdf.darkMode, true);
+  assert.equal(dark.pdf.printBackground, true);
+  assert.equal(dark.pdf.format, 'A4');
+  assert.equal(dark.pdf.autoScale, true);
+  assert.equal(globalSettings.pdf.darkMode, false);
+
+  const article = applySitePdfProfile(globalSettings, 'article');
+  assert.equal(article.pdf.reader, true);
+  const archive = applySitePdfProfile(globalSettings, 'archive');
+  assert.equal(archive.pdf.footerTitle, true);
+  assert.equal(archive.pdf.footerUrl, true);
+  assert.equal(archive.pdf.footerDate, true);
+  assert.equal(applySitePdfProfile(globalSettings, 'default'), globalSettings);
 });
 
 test('normalizeSite och createId ger användbara objekt', () => {
@@ -106,6 +129,9 @@ test('normalizeSite och createId ger användbara objekt', () => {
   const site = normalizeSite({ pattern: ' example.com ' });
   assert.equal(site.pattern, 'example.com');
   assert.equal(site.enabled, true);
+  assert.equal(site.pdfProfile, 'default');
+  assert.equal(normalizeSite({ pattern: 'example.com', pdfProfile: 'dark' }).pdfProfile, 'dark');
+  assert.equal(normalizeSite({ pattern: 'example.com', pdfProfile: 'invalid' }).pdfProfile, 'default');
   assert.match(createId(), /^s_[a-z0-9]+_[a-z0-9]+$/);
 });
 

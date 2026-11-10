@@ -6,6 +6,7 @@ export const TRACKED_FILES = [
   'FORBATTRINGAR.md',
   'LICENSE',
   'README.md',
+  'tests/BROWSER-CHECKLIST.md',
   'third_party/licenses/PDFJS-LICENSE.txt',
   'third_party/licenses/PDF-LIB-LICENSE.md',
   'fonts/OFL-Inter.txt',

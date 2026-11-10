@@ -10,7 +10,8 @@
     <link rel="stylesheet" href="options.css" />
   </head>
   <body class="options">
-    <div class="page">
+    <a class="skip-link" href="#sites-title" data-i18n="a11y.skipContent">Hoppa till huvudinnehåll</a>
+    <div class="page" role="main">
       <header class="page-header">
         <img class="app-icon" src="../icons/icon128.png" width="44" height="44" alt="" />
         <div class="header-titles">
@@ -30,7 +31,7 @@
             <span class="card-icon" aria-hidden="true">
               <span class="icon-slot" data-icon="globe" data-icon-size="16" aria-hidden="true"></span>
             </span>
-            <h2 id="sites-title" data-i18n="options.sites.title">Valda webbplatser</h2>
+            <h2 id="sites-title" tabindex="-1" data-i18n="options.sites.title">Valda webbplatser</h2>
           </div>
           <span id="site-count" class="pill">–</span>
         </div>
@@ -299,6 +300,16 @@
             <span class="sr-only" data-i18n="options.file.saveAs"></span>
           </label>
         </div>
+        <div class="field">
+          <div class="field-text">
+            <label class="field-label" for="file-conflict-action" data-i18n="options.file.conflictAction">Om filnamnet redan finns</label>
+            <span class="field-note" data-i18n="options.file.conflictHint"></span>
+          </div>
+          <select id="file-conflict-action" class="select select-sm">
+            <option value="uniquify" data-i18n="options.file.conflictUniquify">Behåll båda med numrering</option>
+            <option value="overwrite" data-i18n="options.file.conflictOverwrite">Ersätt befintlig fil</option>
+          </select>
+        </div>
         <div class="field field-column">
           <span class="field-label" data-i18n="options.file.savedFolder">Sparad mapp</span>
           <span id="saved-folder-status" class="field-note" role="status" aria-live="polite"></span>
@@ -306,6 +317,22 @@
             <button id="choose-save-folder" class="btn btn-secondary btn-sm" type="button" data-i18n="options.file.chooseFolder">Välj mapp</button>
             <button id="clear-save-folder" class="btn btn-ghost btn-sm" type="button" data-i18n="options.file.clearFolder" hidden>Glöm mapp</button>
           </div>
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="diagnostics-title">
+        <div class="card-head">
+          <div class="card-title">
+            <span class="card-icon" aria-hidden="true">
+              <span class="icon-slot" data-icon="info" data-icon-size="16" aria-hidden="true"></span>
+            </span>
+            <h2 id="diagnostics-title" data-i18n="options.diagnostics.title">Sparningsdiagnostik</h2>
+          </div>
+        </div>
+        <p class="card-desc" data-i18n="options.diagnostics.desc"></p>
+        <ul id="diagnostics-list" class="diagnostics-list" aria-live="polite" aria-relevant="additions text"></ul>
+        <div class="card-actions">
+          <button id="run-diagnostics" class="btn btn-secondary btn-sm" type="button" data-i18n="options.diagnostics.run">Kör kontroll</button>
         </div>
       </section>
 

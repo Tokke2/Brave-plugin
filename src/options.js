@@ -9,6 +9,7 @@ import {
   createId,
   onSettingsChanged,
   DEFAULT_SETTINGS,
+  SITE_PDF_PROFILES,
   mergeSettings,
   normalizeTheme
 } from './lib/settings.js';
@@ -17,7 +18,12 @@ import { resolveLang, applyI18n, t } from './lib/i18n.js';
 import { buildFilename } from './lib/filename.js';
 import { releaseUnusedOrigin } from './lib/access.js';
 import { applyTheme, watchSystemTheme } from './lib/theme.js';
-import { getSavedDirectoryHandle, saveDirectoryHandle, clearDirectoryHandle } from './lib/directory-storage.js';
+import {
+  getSavedDirectoryHandle,
+  getOrCreateSavePickerId,
+  saveDirectoryHandle,
+  clearDirectoryHandle
+} from './lib/directory-storage.js';
 
 window.SidaPdfIcons.hydrate(document);
 const { icon: iconSvg } = window.SidaPdfIcons;
@@ -53,8 +59,11 @@ const els = {
   fileTemplate: document.getElementById('file-template'),
   filePreview: document.getElementById('file-preview'),
   fileSaveAs: document.getElementById('file-save-as'),
+  fileConflictAction: document.getElementById('file-conflict-action'),
   saveAsHint: document.getElementById('save-as-hint'),
   savedFolderStatus: document.getElementById('saved-folder-status'),
+  diagnosticsList: document.getElementById('diagnostics-list'),
+  runDiagnostics: document.getElementById('run-diagnostics'),
   chooseSaveFolder: document.getElementById('choose-save-folder'),
   clearSaveFolder: document.getElementById('clear-save-folder'),
   theme: document.getElementById('theme'),
@@ -125,6 +134,7 @@ async function reload() {
   applyLanguage();
   await refreshAccess();
   renderAll();
+  void runDiagnostics();
 }
 
 function applyLanguage() {
@@ -202,6 +212,7 @@ function renderAll() {
 
   els.fileTemplate.value = settings.file.template;
   els.fileSaveAs.checked = settings.file.saveAs;
+  els.fileConflictAction.value = settings.file.conflictAction;
   const saveHintKey = settings.file.saveAs
     ? settings.file.rememberLocation
       ? 'options.file.saveAsHintOnRemembered'
@@ -267,6 +278,74 @@ async function renderSavedFolder() {
   }
 }
 
+function addDiagnostic(label, status, stateClass = '') {
+  const row = document.createElement('li');
+  row.className = 'diagnostic-row';
+  const labelNode = document.createElement('span');
+  labelNode.textContent = label;
+  const statusNode = document.createElement('span');
+  statusNode.className = `diagnostic-status${stateClass ? ` ${stateClass}` : ''}`;
+  statusNode.textContent = status;
+  row.append(labelNode, statusNode);
+  els.diagnosticsList.appendChild(row);
+}
+
+async function runDiagnostics() {
+  if (!state.settings || els.runDiagnostics.disabled) return;
+  els.runDiagnostics.disabled = true;
+  els.diagnosticsList.replaceChildren();
+  const key = (suffix) => `options.diagnostics.${suffix}`;
+  const showCheck = (labelKey, available) => {
+    addDiagnostic(
+      t(state.lang, key(labelKey)),
+      t(state.lang, available ? key('supported') : key('unsupported')),
+      available ? 'is-ok' : 'is-warn'
+    );
+  };
+
+  const savePickerAvailable = typeof window.showSaveFilePicker === 'function';
+  showCheck('savePicker', savePickerAvailable);
+  showCheck('folderPicker', typeof window.showDirectoryPicker === 'function');
+
+  try {
+    const pickerId = await getOrCreateSavePickerId();
+    addDiagnostic(
+      t(state.lang, key('storage')),
+      pickerId ? t(state.lang, key('ready')) : t(state.lang, key('failed')),
+      pickerId ? 'is-ok' : 'is-warn'
+    );
+  } catch {
+    addDiagnostic(t(state.lang, key('storage')), t(state.lang, key('failed')), 'is-warn');
+  }
+
+  let hasUsableSavedFolder = false;
+  try {
+    const handle = await getSavedDirectoryHandle();
+    if (!handle) {
+      addDiagnostic(t(state.lang, key('folderPermission')), t(state.lang, key('notSet')));
+    } else {
+      const permission = await handle.queryPermission({ mode: 'readwrite' }).catch(() => 'denied');
+      const granted = permission === 'granted';
+      hasUsableSavedFolder = granted;
+      addDiagnostic(
+        t(state.lang, key('folderPermission')),
+        t(state.lang, granted ? key('permissionGranted') : key('permissionNeeded')),
+        granted ? 'is-ok' : 'is-warn'
+      );
+    }
+  } catch {
+    addDiagnostic(t(state.lang, key('folderPermission')), t(state.lang, key('failed')), 'is-warn');
+  }
+
+  const flowKey = state.settings.file.saveAs
+    ? savePickerAvailable ? 'customFlow' : 'browserFlow'
+    : state.settings.file.rememberLocation
+      ? hasUsableSavedFolder ? 'directFlow' : 'browserFlow'
+      : 'downloadsFlow';
+  addDiagnostic(t(state.lang, key('saveFlow')), t(state.lang, key(flowKey)));
+  els.runDiagnostics.disabled = false;
+}
+
 function renderSites() {
   const { settings, lang, access } = state;
   const sites = settings.sites;
@@ -327,6 +406,19 @@ function renderSites() {
     }
 
     main.appendChild(meta);
+
+    const profile = document.createElement('select');
+    profile.className = 'select select-sm site-profile';
+    profile.dataset.action = 'profile';
+    profile.setAttribute('aria-label', t(lang, 'options.sites.pdfProfileFor', { site: site.pattern }));
+    for (const value of SITE_PDF_PROFILES) {
+      const option = document.createElement('option');
+      option.value = value;
+      option.textContent = t(lang, `options.sites.profile.${value}`);
+      option.selected = site.pdfProfile === value;
+      profile.appendChild(option);
+    }
+    main.appendChild(profile);
 
     const actions = document.createElement('div');
     actions.className = 'site-actions';
@@ -397,6 +489,8 @@ async function renderShortcut() {
 /* Händelser                                                           */
 /* ------------------------------------------------------------------ */
 
+els.runDiagnostics.addEventListener('click', () => void runDiagnostics());
+
 els.addForm.addEventListener('submit', async (event) => {
   event.preventDefault();
   const pattern = normalizePattern(els.newPattern.value);
@@ -463,10 +557,21 @@ els.siteList.addEventListener('click', async (event) => {
 });
 
 els.siteList.addEventListener('change', async (event) => {
+  const row = event.target.closest('.site-row');
+  const id = row?.dataset.id;
+  if (!id) return;
+
+  const profile = event.target.closest('select[data-action="profile"]');
+  if (profile) {
+    await persist((draft) => {
+      const site = draft.sites.find((item) => item.id === id);
+      if (site) site.pdfProfile = profile.value;
+    });
+    return;
+  }
+
   const checkbox = event.target.closest('input[data-action="toggle"]');
   if (!checkbox) return;
-  const row = checkbox.closest('.site-row');
-  const id = row?.dataset.id;
   await persist((draft) => {
     const site = draft.sites.find((item) => item.id === id);
     if (site) site.enabled = checkbox.checked;
@@ -591,6 +696,12 @@ els.fileTemplate.addEventListener('change', () => {
 els.fileSaveAs.addEventListener('change', () => {
   void persist((draft) => {
     draft.file.saveAs = els.fileSaveAs.checked;
+  });
+});
+
+els.fileConflictAction.addEventListener('change', () => {
+  void persist((draft) => {
+    draft.file.conflictAction = els.fileConflictAction.value;
   });
 });
 

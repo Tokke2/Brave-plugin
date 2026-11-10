@@ -272,6 +272,8 @@ function computeState() {
 function setBanner(kind, text) {
   els.banner.hidden = !text;
   els.banner.className = `banner ${kind}`;
+  els.banner.setAttribute('role', kind === 'error' ? 'alert' : 'status');
+  els.banner.setAttribute('aria-live', kind === 'error' ? 'assertive' : 'polite');
   els.banner.replaceChildren();
   if (!text) return;
 
@@ -289,6 +291,7 @@ function setBanner(kind, text) {
 
 function setPrimary({ icon, label, loading = false, disabled = false }) {
   els.primary.disabled = disabled;
+  els.primary.setAttribute('aria-busy', loading ? 'true' : 'false');
   els.primary.replaceChildren();
 
   const iconSlot = document.createElement('span');
@@ -508,6 +511,7 @@ async function savePdf() {
   }
   const captureToken = state.captureToken;
   state.busy = true;
+  setBanner('info', t(state.lang, 'popup.progress.preparing'));
   setPrimary({ loading: true, label: t(state.lang, 'popup.saving'), disabled: true });
   els.secondary.disabled = true;
   let pickedFileToken = '';
@@ -707,6 +711,22 @@ els.saveAs.addEventListener('change', () => {
 els.secondary.addEventListener('click', () => {
   if (els.secondary.dataset.action === 'enable') void enableMatchedSite();
   else void removeMatchedSite();
+});
+
+chrome.runtime.onMessage.addListener((message) => {
+  if (
+    message?.type !== 'SAVE_PROGRESS' ||
+    !state.busy ||
+    message.tabId !== state.tab?.id
+  ) return;
+  const keys = {
+    preparing: 'popup.progress.preparing',
+    printing: 'popup.progress.printing',
+    analyzing: 'popup.progress.analyzing',
+    saving: 'popup.progress.saving'
+  };
+  const key = keys[message.stage];
+  if (key) setBanner('info', t(state.lang, key));
 });
 
 els.openOptions.addEventListener('click', openOptions);

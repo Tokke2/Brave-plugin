@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { sanitizeSegment, sanitizeTitle, buildFilename, dateParts } from '../src/lib/filename.js';
+import { sanitizeSegment, sanitizeTitle, buildFilename, dateParts, findAvailableName } from '../src/lib/filename.js';
 
 const date = new Date(2026, 10, 4, 14, 5, 9); // 2026-11-04 14:05:09 lokal tid
 
@@ -137,4 +137,16 @@ test('buildFilename använder alla taggar', () => {
     date
   });
   assert.equal(name, '2026-11-04_14-05-09_example.com.pdf');
+});
+
+test('findAvailableName lägger till nummer så att befintliga PDF:er inte skrivs över', async () => {
+  const existing = new Set(['rapport.pdf', 'rapport (1).pdf']);
+  const directory = {
+    async getFileHandle(name) {
+      if (existing.has(name)) return { name };
+      throw Object.assign(new Error('missing'), { name: 'NotFoundError' });
+    }
+  };
+  assert.equal(await findAvailableName(directory, 'rapport.pdf'), 'rapport (2).pdf');
+  assert.equal(await findAvailableName(directory, 'ny fil.PDF'), 'ny fil.pdf');
 });

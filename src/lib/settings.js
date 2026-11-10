@@ -41,12 +41,14 @@ export const DEFAULT_SETTINGS = Object.freeze({
   file: {
     template: '{title}',
     saveAs: true,
-    rememberLocation: false
+    rememberLocation: false,
+    conflictAction: 'uniquify'
   }
 });
 
 const POSITIONS = ['br', 'bl', 'tr', 'tl'];
 const LANGUAGES = ['auto', 'sv', 'en'];
+export const SITE_PDF_PROFILES = ['default', 'article', 'dark', 'archive'];
 export const THEMES = ['auto', 'light', 'dark'];
 
 /** Normaliserar temavärdet ('auto' när något annat skickas in). */
@@ -72,8 +74,21 @@ export function normalizeSite(raw) {
   return {
     id: typeof raw.id === 'string' && raw.id ? raw.id : createId(),
     pattern,
-    enabled: raw.enabled !== false
+    enabled: raw.enabled !== false,
+    pdfProfile: SITE_PDF_PROFILES.includes(raw.pdfProfile) ? raw.pdfProfile : 'default'
   };
+}
+
+/** Apply only the chosen site's explicit PDF profile over global settings. */
+export function applySitePdfProfile(settings, profile) {
+  const overrides = {
+    article: { reader: true, darkMode: false },
+    dark: { darkMode: true, printBackground: true },
+    archive: { printBackground: true, footerTitle: true, footerUrl: true, footerDate: true }
+  }[profile] || {};
+  return Object.keys(overrides).length
+    ? { ...settings, pdf: { ...settings.pdf, ...overrides, format: 'A4', autoScale: true, preferCssPageSize: false } }
+    : settings;
 }
 
 /** Skapar ett unikt id utan beroenden till crypto-API:er. */
@@ -142,7 +157,8 @@ export function mergeSettings(raw) {
     file: {
       template,
       saveAs,
-      rememberLocation: file.rememberLocation === true
+      rememberLocation: file.rememberLocation === true,
+      conflictAction: file.conflictAction === 'overwrite' ? 'overwrite' : 'uniquify'
     }
   };
 }

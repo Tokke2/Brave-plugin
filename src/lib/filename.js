@@ -61,16 +61,26 @@ export function dateParts(date = new Date()) {
   };
 }
 
+/** Choose a numbered filename that does not exist in a File System Access directory. */
+export async function findAvailableName(directory, requestedName) {
+  const normalized = String(requestedName || 'Sida till PDF.pdf').replace(/\.pdf$/i, '');
+  for (let suffix = 0; suffix < 1000; suffix += 1) {
+    const name = `${normalized}${suffix ? ` (${suffix})` : ''}.pdf`;
+    try {
+      await directory.getFileHandle(name);
+    } catch (error) {
+      if (error?.name === 'NotFoundError') return name;
+      throw error;
+    }
+  }
+  return `${normalized} (${Date.now()}).pdf`;
+}
+
 /**
- * Bygger ett filnamn utan mappdelar för chrome.downloads. Plats väljs av
- * användaren i webbläsarens spar-dialog; tillägget skapar inga undermappar.
- *
- * @param {object} options
- * @param {string} options.template t.ex. "{title}" eller "{date}_{title}"
- * @param {string} options.site     värdnamn
- * @param {string} options.title    sidtitel
- * @param {Date}   [options.date]   tidpunkt (default: nu)
- * @returns {string} t.ex. "Removing - Refitting.pdf"
+ * Builds a filename without directory components. The save location is selected
+ * separately; the extension never creates subfolders.
+ * @param {object} options Filename-template inputs.
+ * @returns {string} e.g. "Removing - Refitting.pdf"
  */
 export function buildFilename({ template, site, title, date = new Date() } = {}) {
   const parts = dateParts(date);

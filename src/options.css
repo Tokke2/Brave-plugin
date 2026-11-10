@@ -200,6 +200,11 @@ body.options {
   overflow-wrap: anywhere;
 }
 
+.site-profile {
+  margin-top: 8px;
+  max-width: 240px;
+}
+
 .site-meta {
   display: flex;
   align-items: center;
@@ -377,4 +382,36 @@ body.options {
   .page-header h1 {
     font-size: var(--text-xl);
   }
+}
+
+.diagnostics-list {
+  display: grid;
+  gap: 6px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.diagnostic-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-2);
+  font-size: var(--text-sm);
+}
+
+.diagnostic-status {
+  color: var(--text-muted);
+  text-align: right;
+}
+
+.diagnostic-status.is-ok {
+  color: var(--success);
+}
+
+.diagnostic-status.is-warn {
+  color: var(--warning-text);
 }

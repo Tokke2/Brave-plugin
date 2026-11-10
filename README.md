@@ -32,6 +32,7 @@
 - PDF-bokmärken, valbar innehållsförteckning från rubriker och förbättrade sidbrytningar.
 - Valbar lokal analys tar bort nästan tomma PDF-sidor.
 - Valbart artikelläge, mörk utskrift, vattenstämpel och optimering av stora bilder.
+- PDF-profiler per webbplats, val för filnamnskrockar och diagnostik av sparstödet.
 - Välj en sparmapp i inställningarna för att använda den som startmapp. Dialogen minns även senast valda mapp; stäng av dialogen om du vill spara direkt i den inställda mappen. Inga undermappar skapas.
 - Svenska och engelska, ljust/mörkt tema och snabbtangenter.
 
@@ -67,6 +68,7 @@ Utskrift och inställningar hanteras lokalt. Tillägget begär webbplatsåtkomst
 - PDF bookmarks, an optional table of contents from headings, and improved page breaks.
 - Optional local analysis removes nearly empty PDF pages.
 - Optional article mode, dark printing, watermark, and large-image optimization.
+- Per-site PDF profiles, filename-collision choices, and save-support diagnostics.
 - Choose a folder in Settings to use it as the starting folder. The dialog also remembers the most recently selected folder; turn the dialog off to save directly in the configured folder. No subfolders are created.
 - Swedish and English, light/dark themes, and keyboard shortcuts.
 

@@ -5,6 +5,7 @@
 
 import * as pdfjsLib from './vendor/pdfjs/pdf.min.mjs';
 import { isBlankPageRaster } from './lib/pdf-analysis.js';
+import { findAvailableName } from './lib/filename.js';
 import {
   getSavedDirectoryHandle,
   getPickedFileHandle,
@@ -56,24 +57,7 @@ function sanitizePdfName(value) {
   return name.toLowerCase().endsWith('.pdf') ? name : `${name}.pdf`;
 }
 
-async function findAvailableName(directory, requestedName) {
-  const extension = '.pdf';
-  const stem = requestedName.toLowerCase().endsWith(extension)
-    ? requestedName.slice(0, -extension.length)
-    : requestedName;
-  for (let suffix = 0; suffix < 1000; suffix += 1) {
-    const name = suffix === 0 ? `${stem}${extension}` : `${stem} (${suffix})${extension}`;
-    try {
-      await directory.getFileHandle(name);
-    } catch (error) {
-      if (error?.name === 'NotFoundError') return name;
-      throw error;
-    }
-  }
-  return `${stem} (${Date.now()})${extension}`;
-}
-
-async function writeToSavedDirectory(base64, requestedName) {
+async function writeToSavedDirectory(base64, requestedName, conflictAction = 'uniquify') {
   const directory = await getSavedDirectoryHandle();
   if (!directory) return { ok: false, reason: 'not-configured' };
   let permission = 'denied';
@@ -84,7 +68,10 @@ async function writeToSavedDirectory(base64, requestedName) {
   }
   if (permission !== 'granted') return { ok: false, reason: 'permission' };
 
-  const filename = await findAvailableName(directory, sanitizePdfName(requestedName));
+  const safeName = sanitizePdfName(requestedName);
+  const filename = conflictAction === 'overwrite'
+    ? safeName
+    : await findAvailableName(directory, safeName);
   const file = await directory.getFileHandle(filename, { create: true });
   const writable = await file.createWritable({ keepExistingData: false });
   try {
@@ -209,7 +196,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'SAVE_TO_REMEMBERED_FOLDER') {
     clearTimeout(idleTimer);
     directoryWriteQueue = directoryWriteQueue
-      .then(() => writeToSavedDirectory(message.base64, message.filename))
+      .then(() => writeToSavedDirectory(message.base64, message.filename, message.conflictAction))
       .then((result) => {
         scheduleIdleClose();
         sendResponse(result);
