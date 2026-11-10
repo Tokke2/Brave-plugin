@@ -29,6 +29,7 @@ const MENU_ID = 'page-to-pdf-save';
 const SELECTION_MENU_ID = 'page-to-pdf-save-selection';
 const ELEMENT_MENU_ID = 'page-to-pdf-pick-element';
 const PANEL_MENU_ID = 'page-to-pdf-open-panel';
+const ACTION_SAVE_MENU_ID = 'page-to-pdf-action-save';
 const UPDATE_MENU_ID = 'page-to-pdf-check-updates';
 const RELOAD_MENU_ID = 'page-to-pdf-reload';
 const UPDATE_API_PERMISSION = 'https://api.github.com/*';
@@ -1502,6 +1503,11 @@ async function syncContextMenu(settings) {
       contexts: ['page', 'image', 'link']
     });
     chrome.contextMenus.create({
+      id: ACTION_SAVE_MENU_ID,
+      title: t(lang, 'menu.saveCurrentPage'),
+      contexts: ['action']
+    });
+    chrome.contextMenus.create({
       id: PANEL_MENU_ID,
       title: t(lang, 'menu.openPanel'),
       contexts: ['action']
@@ -1665,6 +1671,12 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
   }
   if (info.menuItemId === ELEMENT_MENU_ID && tab) {
     void getSettings().then((settings) => startElementPicker(tab, settings));
+    return;
+  }
+  if (info.menuItemId === ACTION_SAVE_MENU_ID && tab) {
+    // The action context menu is opened by right-clicking the extension icon.
+    // Open the same save panel so it uses the remembered save picker location.
+    void openPanelTab(tab);
     return;
   }
   if (info.menuItemId === PANEL_MENU_ID) {

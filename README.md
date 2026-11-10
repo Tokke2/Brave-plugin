@@ -21,6 +21,7 @@
 ### Använda tillägget
 
 - Klicka på tilläggsikonen och sedan på **Spara PDF**. Spar-dialogen öppnas varje gång och minns senast valda mapp.
+- Högerklicka på tilläggsikonen och välj **Spara aktuell sida som PDF** för att öppna samma sparflöde.
 - Högerklicka på markerad text för att spara bara texten, eller välj **Välj område att spara som PDF** och klicka på ett område.
 - I panelen kan du välja sidintervall, till exempel `1-3, 5`. Lämna tomt för alla sidor.
 - Lägg till en webbplats i inställningarna om du vill visa den flytande PDF-knappen på sidan.
@@ -55,6 +56,7 @@ Utskrift och inställningar hanteras lokalt. Tillägget begär webbplatsåtkomst
 ### Use
 
 - Click the extension icon, then click **Save PDF**. The save dialog opens every time and remembers the most recently selected folder.
+- Right-click the extension icon and choose **Save current page as PDF** to open the same save flow.
 - Right-click selected text to save just that text, or choose **Choose an area to save as PDF** and click an area on the page.
 - Enter a page range in the panel, for example `1-3, 5`. Leave it blank to include every page.
 - Add a website in Settings to show the floating PDF button on that site.

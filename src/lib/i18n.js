@@ -10,6 +10,7 @@ export const STRINGS = {
     'action.savePage': 'Klicka för att spara aktuell sida som PDF',
 
     'menu.savePdf': 'Spara sidan som PDF',
+    'menu.saveCurrentPage': 'Spara aktuell sida som PDF',
     'menu.saveSelection': 'Spara markerad text som PDF',
     'menu.pickElement': 'Välj område att spara som PDF',
     'menu.openPanel': 'Öppna Sida till PDF-panelen',
@@ -225,6 +226,7 @@ export const STRINGS = {
     'action.savePage': 'Click to save the current page as PDF',
 
     'menu.savePdf': 'Save page as PDF',
+    'menu.saveCurrentPage': 'Save current page as PDF',
     'menu.saveSelection': 'Save selected text as PDF',
     'menu.pickElement': 'Choose an area to save as PDF',
     'menu.openPanel': 'Open the Page to PDF panel',
