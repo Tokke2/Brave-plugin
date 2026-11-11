@@ -327,3 +327,15 @@ kbd {
     animation-duration: 2s;
   }
 }
+
+#preview-content { margin-top: 7px; }
+
+:root[data-density="compact"] body.popup { padding: 10px; }
+:root[data-density="compact"] .site-card { margin-top: 8px; padding: 9px; }
+:root[data-density="compact"] #banner { margin-top: 8px; }
+:root[data-density="compact"] .btn-primary { margin-top: 8px; padding-block: 8px; }
+:root[data-density="compact"] #preview-content { margin-top: 5px; padding-block: 6px; }
+:root[data-density="compact"] .option-row { margin-top: 8px; padding-top: 7px; }
+:root[data-density="compact"] .filename-row { margin-top: 8px; }
+:root[data-density="compact"] .last-saved { margin-top: 7px; padding-top: 6px; }
+:root[data-density="compact"] .update-card { margin-top: 10px; padding: 10px; }

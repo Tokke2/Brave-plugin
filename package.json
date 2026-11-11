@@ -6,6 +6,6 @@
   "description": "Webbläsartillägg (Chrome/Brave): spara valda sidor som PDF.",
   "scripts": {
     "test": "node --test tests/*.test.js",
-    "check": "node --check src/background.js && node --check src/offscreen.js && node --check src/lib/pdf-analysis.js && node --check src/content.js && node --check src/popup.js && node --check src/options.js && node --check src/reader.js && node --check src/theme-init.js && node --check src/lib/sites.js && node --check src/lib/filename.js && node --check src/lib/print.js && node --check src/lib/theme.js && node --check src/lib/i18n.js && node --check src/lib/icons.js && node --check src/lib/settings.js && node --check src/lib/directory-storage.js && node --check src/lib/updates.js"
+    "check": "node --check src/background.js && node --check src/offscreen.js && node --check src/lib/pdf-analysis.js && node --check src/content.js && node --check src/popup.js && node --check src/preview.js && node --check src/options.js && node --check src/reader.js && node --check src/theme-init.js && node --check src/lib/sites.js && node --check src/lib/filename.js && node --check src/lib/print.js && node --check src/lib/theme.js && node --check src/lib/i18n.js && node --check src/lib/icons.js && node --check src/lib/settings.js && node --check src/lib/directory-storage.js && node --check src/lib/updates.js"
   }
 }

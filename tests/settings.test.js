@@ -171,6 +171,16 @@ test('nya PDF-val har sansade standardvärden', () => {
   assert.equal(old.pdf.reader, false);
 });
 
+test('rullning för lazy-innehåll och gränssnittstäthet normaliseras', () => {
+  assert.equal(DEFAULT_SETTINGS.layoutDensity, 'spacious');
+  assert.equal(DEFAULT_SETTINGS.pdf.scrollToLoad, false);
+  assert.equal(mergeSettings({}).layoutDensity, 'spacious');
+  assert.equal(mergeSettings({ layoutDensity: 'compact' }).layoutDensity, 'compact');
+  assert.equal(mergeSettings({ layoutDensity: 'unknown' }).layoutDensity, 'spacious');
+  assert.equal(mergeSettings({ pdf: { scrollToLoad: true } }).pdf.scrollToLoad, true);
+  assert.equal(mergeSettings({ pdf: { scrollToLoad: 'yes' } }).pdf.scrollToLoad, false);
+});
+
 test('temat normaliseras till auto, light eller dark', () => {
   assert.equal(DEFAULT_SETTINGS.theme, 'auto');
   assert.equal(mergeSettings({}).theme, 'auto');

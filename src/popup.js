@@ -20,7 +20,7 @@ import {
 import { resolveLang, applyI18n, t } from './lib/i18n.js';
 import { releaseUnusedOrigin } from './lib/access.js';
 import { buildFilename } from './lib/filename.js';
-import { applyTheme, watchSystemTheme } from './lib/theme.js';
+import { applyTheme, applyDensity, watchSystemTheme } from './lib/theme.js';
 import {
   getSavedDirectoryHandle,
   shouldStartInSavedDirectory,
@@ -372,6 +372,8 @@ function render() {
   els.statusDot.className = dotClass;
   els.hint.textContent = hintText;
 
+  document.getElementById('preview-content').hidden = !printable || !allowed || Boolean(state.captureToken);
+
   if (!printable) {
     setPrimary({ icon: 'file', label: t(lang, 'popup.save'), disabled: true });
   } else if (allowed) {
@@ -462,6 +464,7 @@ async function load({ initial = false } = {}) {
   await refreshSavedDirectoryHandle();
   state.lang = resolveLang(state.settings.language, chrome.i18n.getUILanguage());
   applyTheme(state.settings.theme);
+  applyDensity(state.settings.layoutDensity);
   applyI18n(document, state.lang);
 
   if (initial) {
@@ -698,6 +701,22 @@ els.showFolder.addEventListener('click', () => {
   void downloadAction('SHOW_DOWNLOAD', Number(els.showFolder.dataset.downloadId));
 });
 
+document.getElementById('preview-content').addEventListener('click', async () => {
+  const button = document.getElementById('preview-content');
+  if (!state.tab?.id || button.disabled) return;
+  button.disabled = true;
+  setBanner('info', t(state.lang, 'popup.previewLoading'));
+  try {
+    const response = await chrome.runtime.sendMessage({ type: 'PREVIEW_CONTENT', tabId: state.tab.id });
+    if (!response?.ok) setBanner('error', t(state.lang, 'popup.previewFailed'));
+    else setBanner('info', t(state.lang, 'popup.previewOpened'));
+  } catch {
+    setBanner('error', t(state.lang, 'popup.previewFailed'));
+  } finally {
+    button.disabled = false;
+  }
+});
+
 els.saveAs.addEventListener('change', () => {
   void (async () => {
     await updateSettings((draft) => {
@@ -739,6 +758,7 @@ onSettingsChanged(() => {
     await refreshSavedDirectoryHandle();
     state.lang = resolveLang(state.settings.language, chrome.i18n.getUILanguage());
     applyTheme(state.settings.theme);
+    applyDensity(state.settings.layoutDensity);
     applyI18n(document, state.lang);
     render();
     await renderHistory();

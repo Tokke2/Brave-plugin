@@ -17,4 +17,7 @@
     }
   }
   document.documentElement.setAttribute('data-theme', resolved);
+  var density = '';
+  try { density = localStorage.getItem('layoutDensity') || ''; } catch (error) { density = ''; }
+  document.documentElement.setAttribute('data-density', density === 'compact' ? 'compact' : 'spacious');
 })();

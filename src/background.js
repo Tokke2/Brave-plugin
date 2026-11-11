@@ -446,24 +446,51 @@ async function restorePageImages(target) {
   }
 }
 
-async function waitForPageReady(target, waitMs) {
+async function waitForPageReady(target, waitMs, scrollToLoad = false) {
   const delay = Math.max(0, Math.min(5000, Number(waitMs) || 0));
   const expression = `(async () => {
     const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
     try {
       if (document.fonts && document.fonts.ready) await document.fonts.ready;
     } catch (error) { /* ignoreras */ }
-    const images = Array.from(document.images || []);
-    for (const image of images) {
-      if (image.loading === 'lazy') image.loading = 'eager';
+    if (${Boolean(scrollToLoad)}) {
+      const originalX = window.scrollX;
+      const originalY = window.scrollY;
+      const rootStyle = document.documentElement.style;
+      const originalScrollBehavior = rootStyle.scrollBehavior;
+      rootStyle.scrollBehavior = 'auto';
+      const sleepScroll = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+      try {
+        let stablePasses = 0;
+        let previousHeight = 0;
+        for (let step = 0; step < 80; step += 1) {
+          const height = Math.max(document.documentElement.scrollHeight, document.body?.scrollHeight || 0);
+          if (height === previousHeight) stablePasses += 1; else stablePasses = 0;
+          if (stablePasses >= 3 && window.scrollY + window.innerHeight >= height) break;
+          previousHeight = height;
+          window.scrollTo(0, Math.min(height, window.scrollY + Math.max(300, Math.floor(window.innerHeight * 0.8))));
+          await sleepScroll(120);
+        }
+        await sleepScroll(250);
+      } finally {
+        rootStyle.scrollBehavior = originalScrollBehavior;
+        window.scrollTo(originalX, originalY);
+      }
     }
-    const pending = images.filter((img) => !img.complete).slice(0, 100);
-    await Promise.all(pending.map((img) => new Promise((resolve) => {
-      img.addEventListener('load', resolve, { once: true });
-      img.addEventListener('error', resolve, { once: true });
-      setTimeout(resolve, 5000);
-    })));
-    await sleep(${delay});
+    const images = Array.from(document.images || []);
+    const lazyImages = images.filter((image) => image.loading === 'lazy');
+    for (const image of lazyImages) image.loading = 'eager';
+    try {
+      const pending = images.filter((img) => !img.complete).slice(0, 100);
+      await Promise.all(pending.map((img) => new Promise((resolve) => {
+        img.addEventListener('load', resolve, { once: true });
+        img.addEventListener('error', resolve, { once: true });
+        setTimeout(resolve, 5000);
+      })));
+      await sleep(${delay});
+    } finally {
+      for (const image of lazyImages) image.loading = 'lazy';
+    }
     return true;
   })()`;
 
@@ -474,7 +501,7 @@ async function waitForPageReady(target, waitMs) {
         awaitPromise: true,
         returnByValue: true
       }),
-      new Promise((resolve) => setTimeout(resolve, 8000))
+      new Promise((resolve) => setTimeout(resolve, scrollToLoad ? 24000 : 8000))
     ]);
   } catch {
     /* sidan kan sakna Runtime – då hoppar vi bara över väntan */
@@ -516,7 +543,7 @@ async function printTabToPdf(tabId, settings, tab = {}, { forceBackground = fals
 
   try {
     await chrome.debugger.sendCommand(target, 'Page.enable');
-    await waitForPageReady(target, settings.pdf.waitMs);
+    await waitForPageReady(target, settings.pdf.waitMs, settings.pdf.scrollToLoad);
 
     if (settings.pdf.darkMode) cleanupDark = await applyDarkPrint(target);
     cleanupEnhancements = await applyPrintEnhancements(target, settings);
@@ -601,6 +628,8 @@ async function printTabToPdf(tabId, settings, tab = {}, { forceBackground = fals
 
 const READER_KEY = 'readerDoc';
 const READER_PAGE = 'src/reader.html';
+const PREVIEW_PREFIX = 'pending-preview:';
+const PREVIEW_PAGE = 'src/preview.html';
 
 /**
  * Hämtar huvudinnehållet från sidan. Funktionen serialiseras och körs i
@@ -709,7 +738,7 @@ function articleExtractor() {
 }
 
 /** Kör artikellägets extrahering i fliken och kopplar loss debuggern. */
-async function extractArticle(tabId, waitMs) {
+async function extractArticle(tabId, waitMs, scrollToLoad = false) {
   const target = { tabId };
   try {
     await chrome.debugger.attach(target, '1.3');
@@ -719,7 +748,7 @@ async function extractArticle(tabId, waitMs) {
 
   try {
     await chrome.debugger.sendCommand(target, 'Page.enable');
-    await waitForPageReady(target, Math.min(Number(waitMs) || 0, 1200));
+    await waitForPageReady(target, Math.min(Number(waitMs) || 0, 1200), scrollToLoad);
     const result = await chrome.debugger.sendCommand(target, 'Runtime.evaluate', {
       expression: `(${articleExtractor.toString()})()`,
       awaitPromise: true,
@@ -728,6 +757,29 @@ async function extractArticle(tabId, waitMs) {
     return result?.result?.value || null;
   } finally {
     chrome.debugger.detach(target).catch(() => {});
+  }
+}
+
+async function openContentPreview(tab) {
+  const settings = await getSettings();
+  const article = await extractArticle(tab.id, settings.pdf.waitMs, settings.pdf.scrollToLoad);
+  if (!article?.html || article.html.length > 1_000_000) return { ok: false, error: 'preview' };
+  const token = globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const key = `${PREVIEW_PREFIX}${token}`;
+  await chrome.storage.session.set({
+    [key]: {
+      ...article,
+      readerMode: settings.pdf.reader,
+      language: currentLang(settings),
+      createdAt: Date.now()
+    }
+  });
+  try {
+    await chrome.tabs.create({ url: `${chrome.runtime.getURL(PREVIEW_PAGE)}?token=${encodeURIComponent(token)}` });
+    return { ok: true };
+  } catch (error) {
+    await chrome.storage.session.remove(key);
+    throw error;
   }
 }
 
@@ -802,7 +854,7 @@ async function printReaderContentPdf(tab, settings, article, { pageRanges = '' }
 async function printReaderPdf(tab, settings, options = {}) {
   let article = null;
   try {
-    article = await extractArticle(tab.id, settings.pdf.waitMs);
+    article = await extractArticle(tab.id, settings.pdf.waitMs, settings.pdf.scrollToLoad);
   } catch (error) {
     console.warn('Artikelläget kunde inte läsa sidan', error);
     return null;
@@ -1740,6 +1792,16 @@ async function handleMessage(message, sender) {
   if (!message || typeof message !== 'object') return { ok: false, error: 'unexpected' };
 
   switch (message.type) {
+    case 'PREVIEW_CONTENT': {
+      if (!sender?.url?.startsWith(chrome.runtime.getURL('')) || !Number.isInteger(message.tabId)) {
+        return { ok: false, error: 'unexpected' };
+      }
+      let tab = null;
+      try { tab = await chrome.tabs.get(message.tabId); } catch { tab = null; }
+      if (!tab || !isPrintableUrl(tab.url)) return { ok: false, error: 'restricted' };
+      return openContentPreview(tab);
+    }
+
     case 'PAGE_CONTEXT': {
       const url = sender?.tab?.url || message.url || '';
       return { ok: true, context: await buildPageContext(url) };

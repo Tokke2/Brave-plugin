@@ -17,7 +17,7 @@ import { normalizePattern, isValidPattern, originPatternFor } from './lib/sites.
 import { resolveLang, applyI18n, t } from './lib/i18n.js';
 import { buildFilename } from './lib/filename.js';
 import { releaseUnusedOrigin } from './lib/access.js';
-import { applyTheme, watchSystemTheme } from './lib/theme.js';
+import { applyTheme, applyDensity, watchSystemTheme } from './lib/theme.js';
 import {
   getSavedDirectoryHandle,
   getOrCreateSavePickerId,
@@ -52,6 +52,13 @@ const els = {
   pdfOpenAfterSave: document.getElementById('pdf-open-after-save'),
   pdfTableOfContents: document.getElementById('pdf-table-of-contents'),
   pdfRemoveBlankPages: document.getElementById('pdf-remove-blank-pages'),
+  pdfScrollToLoad: document.getElementById('pdf-scroll-to-load'),
+  pdfPreviewSheet: document.getElementById('pdf-preview-sheet'),
+  pdfPreviewContent: document.querySelector('.pdf-preview-content'),
+  pdfPreviewWatermark: document.getElementById('pdf-preview-watermark'),
+  pdfPreviewFooter: document.getElementById('pdf-preview-footer'),
+  pdfPreviewPages: document.getElementById('pdf-preview-pages'),
+  pdfPreviewSummary: document.getElementById('pdf-preview-summary'),
   pdfFooterTitle: document.getElementById('pdf-footer-title'),
   pdfFooterUrl: document.getElementById('pdf-footer-url'),
   pdfFooterDate: document.getElementById('pdf-footer-date'),
@@ -67,10 +74,15 @@ const els = {
   chooseSaveFolder: document.getElementById('choose-save-folder'),
   clearSaveFolder: document.getElementById('clear-save-folder'),
   theme: document.getElementById('theme'),
+  layoutDensity: document.getElementById('layout-density'),
   language: document.getElementById('language'),
   allowAll: document.getElementById('allow-all'),
   shortcutValue: document.getElementById('shortcut-value'),
   shortcutButton: document.getElementById('shortcut-button'),
+  shortcutDialog: document.getElementById('shortcut-dialog'),
+  shortcutList: document.getElementById('shortcut-list'),
+  openShortcutsPage: document.getElementById('open-shortcuts-page'),
+  closeShortcutDialog: document.getElementById('close-shortcut-dialog'),
   exportButton: document.getElementById('export-button'),
   importButton: document.getElementById('import-button'),
   importFile: document.getElementById('import-file'),
@@ -206,6 +218,7 @@ function renderAll() {
   els.pdfOpenAfterSave.checked = settings.pdf.openAfterSave;
   els.pdfTableOfContents.checked = settings.pdf.tableOfContents;
   els.pdfRemoveBlankPages.checked = settings.pdf.removeBlankPages;
+  els.pdfScrollToLoad.checked = settings.pdf.scrollToLoad;
   els.pdfFooterTitle.checked = settings.pdf.footerTitle;
   els.pdfFooterUrl.checked = settings.pdf.footerUrl;
   els.pdfFooterDate.checked = settings.pdf.footerDate;
@@ -223,13 +236,16 @@ function renderAll() {
   els.saveAsHint.textContent = t(state.lang, saveHintKey);
 
   els.theme.value = normalizeTheme(settings.theme);
+  els.layoutDensity.value = settings.layoutDensity;
   applyTheme(settings.theme);
+  applyDensity(settings.layoutDensity);
 
   els.language.value = settings.language;
   els.allowAll.checked = settings.allowAll;
 
   renderSites();
   renderPreview();
+  renderPdfPreview();
   renderShortcut();
   void renderSavedFolder();
 }
@@ -467,6 +483,7 @@ async function renderShortcut() {
     const commands = await chrome.commands.getAll();
     const main = commands.find((item) => item.name === 'save-pdf')?.shortcut;
     const quiet = commands.find((item) => item.name === 'save-pdf-quiet')?.shortcut;
+    renderShortcutDialog(commands);
 
     if (main && quiet) {
       els.shortcutValue.textContent = t(state.lang, 'options.general.shortcutValueBoth', {
@@ -482,7 +499,51 @@ async function renderShortcut() {
     }
   } catch {
     els.shortcutValue.textContent = '';
+    renderShortcutDialog([]);
   }
+}
+
+function renderShortcutDialog(commands) {
+  els.shortcutList.replaceChildren();
+  const labels = {
+    'save-pdf': t(state.lang, 'options.general.shortcutSave'),
+    'save-pdf-quiet': t(state.lang, 'options.general.shortcutQuiet')
+  };
+  for (const name of ['save-pdf', 'save-pdf-quiet']) {
+    const command = commands.find((item) => item.name === name);
+    const row = document.createElement('li');
+    const label = document.createElement('span');
+    label.textContent = labels[name];
+    const value = document.createElement('kbd');
+    value.textContent = command?.shortcut || t(state.lang, 'options.general.shortcutNotSet');
+    row.append(label, value);
+    els.shortcutList.append(row);
+  }
+}
+
+function renderPdfPreview() {
+  if (!state.settings) return;
+  const background = els.pdfBackground.checked;
+  const dark = els.pdfDark.checked;
+  const watermark = els.pdfWatermark.value.trim();
+  const footerItems = [];
+  if (els.pdfFooterTitle.checked) footerItems.push(t(state.lang, 'options.pdf.previewFooterTitle'));
+  if (els.pdfFooterUrl.checked) footerItems.push('example.com');
+  if (els.pdfFooterDate.checked) footerItems.push(new Intl.DateTimeFormat(state.lang === 'sv' ? 'sv-SE' : 'en-US').format(new Date()));
+  els.pdfPreviewSheet.classList.toggle('has-backgrounds', background || dark);
+  els.pdfPreviewSheet.classList.toggle('is-dark', dark);
+  els.pdfPreviewSheet.classList.toggle('has-watermark', Boolean(watermark));
+  els.pdfPreviewWatermark.textContent = watermark;
+  const marginMm = Math.max(0, Math.min(50, Number(els.pdfMargin.value) || 0));
+  els.pdfPreviewContent.style.inset = `${Math.max(4, marginMm / 297 * 100)}% ${Math.max(4, marginMm / 210 * 100)}% ${Math.max(7, marginMm / 297 * 100)}%`;
+  els.pdfPreviewFooter.textContent = footerItems.join(' · ');
+  els.pdfPreviewPages.textContent = els.pdfHeader.checked ? '1 / 3' : '';
+  els.pdfPreviewSummary.textContent = t(state.lang, 'options.pdf.previewSummary', {
+    margin: els.pdfMargin.value || '0',
+    scale: els.pdfScale.value || '100',
+    backgrounds: t(state.lang, background || dark ? 'options.pdf.previewOn' : 'options.pdf.previewOff'),
+    footer: t(state.lang, footerItems.length || els.pdfHeader.checked ? 'options.pdf.previewOn' : 'options.pdf.previewOff')
+  });
 }
 
 /* ------------------------------------------------------------------ */
@@ -490,6 +551,11 @@ async function renderShortcut() {
 /* ------------------------------------------------------------------ */
 
 els.runDiagnostics.addEventListener('click', () => void runDiagnostics());
+for (const control of [els.pdfMargin, els.pdfScale, els.pdfBackground, els.pdfHeader, els.pdfDark, els.pdfWatermark, els.pdfFooterTitle, els.pdfFooterUrl, els.pdfFooterDate]) {
+  control.addEventListener('input', renderPdfPreview);
+  control.addEventListener('change', renderPdfPreview);
+}
+
 
 els.addForm.addEventListener('submit', async (event) => {
   event.preventDefault();
@@ -663,6 +729,12 @@ els.pdfRemoveBlankPages.addEventListener('change', () => {
   });
 });
 
+els.pdfScrollToLoad.addEventListener('change', () => {
+  void persist((draft) => {
+    draft.pdf.scrollToLoad = els.pdfScrollToLoad.checked;
+  });
+});
+
 els.pdfFooterTitle.addEventListener('change', () => {
   void persist((draft) => {
     draft.pdf.footerTitle = els.pdfFooterTitle.checked;
@@ -738,6 +810,13 @@ els.clearSaveFolder.addEventListener('click', async () => {
   }
 });
 
+els.layoutDensity.addEventListener('change', () => {
+  applyDensity(els.layoutDensity.value);
+  void persist((draft) => {
+    draft.layoutDensity = els.layoutDensity.value;
+  });
+});
+
 els.theme.addEventListener('change', () => {
   applyTheme(els.theme.value);
   void persist((draft) => {
@@ -767,9 +846,18 @@ els.allowAll.addEventListener('change', () => {
   }).then(syncScripts);
 });
 
-els.shortcutButton.addEventListener('click', async () => {
+els.shortcutButton.addEventListener('click', () => {
+  void renderShortcut().then(() => els.shortcutDialog.showModal());
+});
+
+els.closeShortcutDialog.addEventListener('click', () => els.shortcutDialog.close());
+els.shortcutDialog.addEventListener('click', (event) => {
+  if (event.target === els.shortcutDialog) els.shortcutDialog.close();
+});
+els.openShortcutsPage.addEventListener('click', async () => {
   try {
     await chrome.tabs.create({ url: 'chrome://extensions/shortcuts' });
+    els.shortcutDialog.close();
   } catch {
     showBanner('info', 'chrome://extensions/shortcuts');
   }
@@ -840,6 +928,7 @@ els.resetAll.addEventListener('click', async () => {
 onSettingsChanged((settings) => {
   const languageChanged = settings.language !== state.settings?.language;
   state.settings = settings;
+  applyDensity(settings.layoutDensity);
   if (languageChanged) {
     state.lang = resolveLang(settings.language, chrome.i18n.getUILanguage());
     applyLanguage();

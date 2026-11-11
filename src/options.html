@@ -225,6 +225,17 @@
             <span class="sr-only" data-i18n="options.pdf.removeBlankPages"></span>
           </label>
         </div>
+        <div class="field">
+          <div class="field-text">
+            <span class="field-label" data-i18n="options.pdf.scrollToLoad">Ladda innehåll medan sidan rullas igenom</span>
+            <span class="field-note" data-i18n="options.pdf.scrollToLoadHint"></span>
+          </div>
+          <label class="switch">
+            <input id="pdf-scroll-to-load" type="checkbox" />
+            <span class="track"></span>
+            <span class="sr-only" data-i18n="options.pdf.scrollToLoad"></span>
+          </label>
+        </div>
 
         <div class="field">
           <div class="field-text">
@@ -260,6 +271,21 @@
           </label>
         </div>
 
+        <section class="pdf-preview-card" aria-labelledby="pdf-preview-title">
+          <div class="pdf-preview-heading">
+            <div><h3 id="pdf-preview-title" data-i18n="options.pdf.previewTitle">Förhandsvisning av PDF-inställningar</h3>
+              <p class="field-note" data-i18n="options.pdf.previewHint">Ungefärlig skiss; den verkliga sidlayouten beror på webbplatsens innehåll.</p></div>
+          </div>
+          <div class="pdf-preview-sheet" id="pdf-preview-sheet" aria-hidden="true">
+            <div class="pdf-preview-watermark" id="pdf-preview-watermark"></div>
+            <div class="pdf-preview-content">
+              <h4 data-i18n="options.pdf.previewSampleHeading">Exempel på sidtitel</h4>
+              <div class="pdf-preview-lines"><i></i><i></i><i></i><i></i><i></i></div>
+              <div class="pdf-preview-footer"><span id="pdf-preview-footer"></span><span id="pdf-preview-pages"></span></div>
+            </div>
+          </div>
+          <p id="pdf-preview-summary" class="pdf-preview-summary" aria-live="polite"></p>
+        </section>
         <div class="card-actions">
           <button id="reset-pdf" class="btn btn-ghost btn-sm" type="button">
             <span class="icon-slot" data-icon="reset" data-icon-size="14" aria-hidden="true"></span>
@@ -370,6 +396,17 @@
 
         <div class="field">
           <div class="field-text">
+            <label class="field-label" for="layout-density" data-i18n="options.general.density">Gränssnittets täthet</label>
+            <span class="field-note" data-i18n="options.general.densityHint">Välj mer luft eller visa mer innehåll samtidigt.</span>
+          </div>
+          <select id="layout-density" class="select select-sm">
+            <option value="spacious" data-i18n="options.general.densitySpacious">Rymlig</option>
+            <option value="compact" data-i18n="options.general.densityCompact">Kompakt</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <div class="field-text">
             <span class="field-label" data-i18n="options.general.allowAll">Tillåt alla webbplatser</span>
             <span class="field-note" data-i18n="options.general.allowAllHint"></span>
           </div>
@@ -389,7 +426,7 @@
           <div class="field-actions">
             <button id="shortcut-button" class="btn btn-secondary btn-sm" type="button">
               <span class="icon-slot" data-icon="keyboard" data-icon-size="14" aria-hidden="true"></span>
-              <span data-i18n="options.general.shortcutChange">Ändra snabbtangent</span>
+              <span data-i18n="options.general.shortcutChange">Visa snabbtangenter</span>
             </button>
           </div>
         </div>
@@ -426,6 +463,18 @@
         <p class="muted">Sida till PDF · <span id="app-version"></span></p>
       </footer>
     </div>
+
+    <dialog id="shortcut-dialog" class="settings-dialog" aria-labelledby="shortcut-dialog-title" aria-describedby="shortcut-dialog-hint">
+      <div class="settings-dialog-content">
+        <h2 id="shortcut-dialog-title" data-i18n="options.general.shortcutDialogTitle">Snabbtangenter</h2>
+        <p id="shortcut-dialog-hint" class="field-note" data-i18n="options.general.shortcutDialogHint">För att ändra genvägar öppnas webbläsarens egen inställningssida.</p>
+        <ul id="shortcut-list" class="shortcut-list"></ul>
+        <div class="settings-dialog-actions">
+          <button id="open-shortcuts-page" type="button" class="btn btn-primary" data-i18n="options.general.shortcutOpenBrowser">Ändra i webbläsaren</button>
+          <button id="close-shortcut-dialog" type="button" class="btn btn-ghost" data-i18n="options.general.dialogClose">Stäng</button>
+        </div>
+      </div>
+    </dialog>
 
     <script type="module" src="options.js"></script>
   </body>

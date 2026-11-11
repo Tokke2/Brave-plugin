@@ -49,3 +49,16 @@ export function watchSystemTheme(callback) {
   }
   return () => {};
 }
+
+
+/** Apply and cache the interface density before/after settings load. */
+export function applyDensity(value, doc = document) {
+  const density = value === 'compact' ? 'compact' : 'spacious';
+  doc.documentElement.setAttribute('data-density', density);
+  try {
+    localStorage.setItem('layoutDensity', density);
+  } catch {
+    /* The setting still works until the page reloads if storage is blocked. */
+  }
+  return density;
+}

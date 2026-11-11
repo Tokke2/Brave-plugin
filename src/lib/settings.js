@@ -12,6 +12,7 @@ export const DEFAULT_SETTINGS = Object.freeze({
   version: 9,
   language: 'auto', // 'auto' | 'sv' | 'en'
   theme: 'auto', // 'auto' | 'light' | 'dark'
+  layoutDensity: 'spacious', // 'compact' | 'spacious'
   allowAll: false,
   sites: [], // { id, pattern, enabled }
   button: {
@@ -36,6 +37,7 @@ export const DEFAULT_SETTINGS = Object.freeze({
     openAfterSave: false,
     tableOfContents: false,
     removeBlankPages: false,
+    scrollToLoad: false,
     waitMs: 400
   },
   file: {
@@ -127,6 +129,7 @@ export function mergeSettings(raw) {
     version: DEFAULT_SETTINGS.version,
     language: LANGUAGES.includes(source.language) ? source.language : DEFAULT_SETTINGS.language,
     theme: normalizeTheme(source.theme),
+    layoutDensity: source.layoutDensity === 'compact' ? 'compact' : 'spacious',
     allowAll: source.allowAll === true,
     sites,
     button: {
@@ -152,6 +155,7 @@ export function mergeSettings(raw) {
       openAfterSave: pdf.openAfterSave === true,
       tableOfContents: pdf.tableOfContents === true,
       removeBlankPages: pdf.removeBlankPages === true,
+      scrollToLoad: pdf.scrollToLoad === true,
       waitMs: Math.round(clampNumber(pdf.waitMs, 0, 5000, DEFAULT_SETTINGS.pdf.waitMs))
     },
     file: {

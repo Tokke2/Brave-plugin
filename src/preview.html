@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="sv">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script src="theme-init.js"></script>
+    <title>Förhandsvisning – Sida till PDF</title>
+    <link rel="stylesheet" href="ui.css" />
+    <link rel="stylesheet" href="preview.css" />
+  </head>
+  <body class="content-preview">
+    <main class="preview-page">
+      <header class="preview-header">
+        <div>
+          <p class="preview-eyebrow" data-i18n="preview.eyebrow">Sida till PDF</p>
+          <h1 id="preview-title" data-i18n="preview.title">Förhandsvisning av innehåll</h1>
+          <p id="preview-mode" class="preview-mode" role="status" aria-live="polite"></p>
+        </div>
+        <a id="source-link" class="btn btn-secondary" href="#" target="_blank" rel="noopener noreferrer" data-i18n="preview.openSource">Öppna källsidan</a>
+      </header>
+      <section class="preview-stats" aria-label="Innehållsöversikt" data-i18n-aria-label="preview.stats">
+        <div><strong id="word-count">0</strong><span data-i18n="preview.words">ord</span></div>
+        <div><strong id="heading-count">0</strong><span data-i18n="preview.headings">rubriker</span></div>
+        <div><strong id="image-count">0</strong><span data-i18n="preview.images">bilder</span></div>
+      </section>
+      <article id="preview-content" class="preview-content"></article>
+      <p id="preview-error" class="preview-error" role="alert" hidden data-i18n="preview.unavailable">Förhandsvisningen kunde inte öppnas. Stäng fliken och försök igen från sparpanelen.</p>
+    </main>
+    <script type="module" src="preview.js"></script>
+  </body>
+</html>

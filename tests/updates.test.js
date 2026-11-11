@@ -8,6 +8,9 @@ import { TRACKED_FILES, compareVersions, diffFileHashes, gitBlobSha } from '../s
 test('alla levererade filer och PDF-hjälpbibliotek finns i uppdateringslistan', () => {
   for (const file of [
     'src/lib/pdf-analysis.js',
+    'src/preview.html',
+    'src/preview.js',
+    'src/preview.css',
     'src/lib/directory-storage.js',
     'src/vendor/pdfjs/pdf.min.mjs',
     'src/vendor/pdfjs/pdf.worker.min.mjs',

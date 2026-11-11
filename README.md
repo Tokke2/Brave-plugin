@@ -34,6 +34,9 @@
 - Valbart artikelläge, mörk utskrift, vattenstämpel och optimering av stora bilder.
 - PDF-profiler per webbplats, val för filnamnskrockar och diagnostik av sparstödet.
 - Välj en sparmapp i inställningarna för att använda den som startmapp. Dialogen minns även senast valda mapp; stäng av dialogen om du vill spara direkt i den inställda mappen. Inga undermappar skapas.
+- Förhandsgranska artikelurvalet före sparning; PDF-inställningarna har också en ungefärlig live-skiss.
+- Valbar rullning genom sidan försöker ladda innehåll som annars visas först när man scrollar.
+- Välj kompakt eller rymlig layout. Snabbtangenter visas i en dialog och ändras via webbläsarens genvägsinställningar.
 - Svenska och engelska, ljust/mörkt tema och snabbtangenter.
 
 ### Integritet och uppdateringar
@@ -70,6 +73,9 @@ Utskrift och inställningar hanteras lokalt. Tillägget begär webbplatsåtkomst
 - Optional article mode, dark printing, watermark, and large-image optimization.
 - Per-site PDF profiles, filename-collision choices, and save-support diagnostics.
 - Choose a folder in Settings to use it as the starting folder. The dialog also remembers the most recently selected folder; turn the dialog off to save directly in the configured folder. No subfolders are created.
+- Preview the extracted article before saving; PDF settings also include an approximate live sketch.
+- Optional page scrolling attempts to load content that appears only after scrolling.
+- Choose a compact or spacious layout. Keyboard shortcuts are listed in a dialog and changed through the browser's shortcut settings.
 - Swedish and English, light/dark themes, and keyboard shortcuts.
 
 ### Privacy and updates
