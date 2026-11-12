@@ -1,6 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 128 128">
-  <rect width="128" height="128" rx="28" fill="#D93B30"/>
-  <path d="M39 14h34l25 25v72a7 7 0 0 1-7 7H39a7 7 0 0 1-7-7V21a7 7 0 0 1 7-7Z" fill="#fff"/>
-  <path d="M73 14v19a6 6 0 0 0 6 6h19L73 14Z" fill="#F3BDB7"/>
-  <path d="M64 54v34m-14-14 14 14 14-14" fill="none" stroke="#D93B30" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 128 128" role="img" aria-labelledby="title">
+  <title id="title">Sida till PDF</title>
+  <rect width="128" height="128" rx="30" fill="#15344A"/>
+  <path d="M36 15h35l24 24v67a7 7 0 0 1-7 7H36a7 7 0 0 1-7-7V22a7 7 0 0 1 7-7Z" fill="#F7FAFC"/>
+  <path d="M71 15v19a5 5 0 0 0 5 5h19L71 15Z" fill="#FF796C"/>
+  <path d="M49 53h29M49 65h20" fill="none" stroke="#A9BAC7" stroke-width="6" stroke-linecap="round"/>
+  <path d="M70 81v24m-9-9 9 9 9-9" fill="none" stroke="#F05A50" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>

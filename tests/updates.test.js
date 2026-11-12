@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { webcrypto } from 'node:crypto';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 
 import { TRACKED_FILES, compareVersions, diffFileHashes, gitBlobSha } from '../src/lib/updates.js';
 
@@ -21,6 +21,14 @@ test('alla levererade filer och PDF-hjälpbibliotek finns i uppdateringslistan',
     assert.ok(TRACKED_FILES.includes(file), `${file} saknas i TRACKED_FILES`);
   }
   for (const file of TRACKED_FILES) assert.ok(existsSync(file), `${file} saknas i repot`);
+});
+
+test('print-ready brand logo and extension icon are vector artwork without embedded raster images', () => {
+  for (const path of ['icons/brand-logo.svg', 'icons/icon.svg']) {
+    const svg = readFileSync(path, 'utf8');
+    assert.match(svg, /<path\b/);
+    assert.doesNotMatch(svg, /<(?:text|image)\b/i, `${path} should not depend on fonts or embedded rasters`);
+  }
 });
 
 test('compareVersions orders numeric release versions', () => {

@@ -1,6 +1,12 @@
 # Manuell webbläsarkontroll
 
-Kör checklistan separat i aktuell Brave- och Chrome-version på Windows. Automatiska Node-tester ersätter inte kontroller av webbläsarens filväljare eller högerklicksmeny.
+Kör checklistan separat i aktuell Brave- och Chrome-version på Windows, macOS och Linux. Tillägget använder Chromium-API:er och inga OS-specifika binärer; filväljare och mappminne kan ändå skilja sig mellan webbläsare och operativsystem. Automatiska Node-tester ersätter inte kontroller i webbläsaren.
+
+## Plattformar
+
+- På Windows, macOS och Linux, läs in samma opackade mapp i Brave respektive Chrome och kontrollera att tillägget startar, visar ikonen och kan spara en vanlig HTTPS-sida.
+- På varje kombination, kontrollera att om filväljar-API:t saknas fungerar webbläsarens reservdialog och att systemets visning av sökvägar inte orsakar fel.
+- Bekräfta att snabbtangenter och högerklicksmenyn går att använda på varje operativsystem. Anteckna OS, webbläsare och version; systemfältet ingår inte eftersom tillägget inte är ett fristående skrivbordsprogram.
 
 ## Sparflöde och mappminne
 

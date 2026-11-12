@@ -18,6 +18,10 @@
 4. Klicka på **Läs in opackat** och välj projektmappen som innehåller `manifest.json`.
 5. Fäst tillägget i verktygsfältet om du vill.
 
+### Plattformar
+
+Tillägget är OS-oberoende och avsett för Windows, macOS och Linux i Chromium-baserade Brave/Chrome-versioner som uppfyller manifestets Chromium 116-krav. Filväljare och minne av sparmappar beror på webbläsarens API-stöd; webbläsarens egen sparruta används som reserv. Ett webbläsartillägg kan inte minimera eller stänga sig till operativsystemets systemfält (systray). Som alternativ kan **Öppna Sida till PDF-panelen** via högerklick på tilläggsikonen lämna panelen öppen i en vanlig flik. Riktig testning på alla operativsystem återstår.
+
 ### Använda tillägget
 
 - Klicka på tilläggsikonen och sedan på **Spara PDF**. Spar-dialogen öppnas varje gång och minns senast valda mapp.
@@ -37,6 +41,7 @@
 - Förhandsgranska artikelurvalet före sparning; PDF-inställningarna har också en ungefärlig live-skiss.
 - Valbar rullning genom sidan försöker ladda innehåll som annars visas först när man scrollar.
 - Välj kompakt eller rymlig layout. Snabbtangenter visas i en dialog och ändras via webbläsarens genvägsinställningar.
+- Ny sid- och nedladdningsikon samt en tryckfärdig SVG-logotyp med text omvandlad till vektorbanor.
 - Svenska och engelska, ljust/mörkt tema och snabbtangenter.
 
 ### Integritet och uppdateringar
@@ -57,6 +62,10 @@ Utskrift och inställningar hanteras lokalt. Tillägget begär webbplatsåtkomst
 4. Click **Load unpacked** and select the project folder containing `manifest.json`.
 5. Pin the extension to the toolbar if you like.
 
+### Platforms
+
+The extension is OS-independent and intended for Windows, macOS, and Linux in Chromium-based Brave/Chrome versions that meet the manifest's Chromium 116 baseline. File pickers and remembered folders depend on browser API support; the browser's own save dialog is the fallback. A browser extension cannot minimize or close itself to the operating system's system tray. As an alternative, right-click the extension icon and choose **Open the Page to PDF panel** to leave the panel open in a regular browser tab. Real testing on every operating system is still outstanding.
+
 ### Use
 
 - Click the extension icon, then click **Save PDF**. The save dialog opens every time and remembers the most recently selected folder.
@@ -76,6 +85,7 @@ Utskrift och inställningar hanteras lokalt. Tillägget begär webbplatsåtkomst
 - Preview the extracted article before saving; PDF settings also include an approximate live sketch.
 - Optional page scrolling attempts to load content that appears only after scrolling.
 - Choose a compact or spacious layout. Keyboard shortcuts are listed in a dialog and changed through the browser's shortcut settings.
+- A redesigned page-and-download icon and a print-ready SVG logo with the wordmark converted to vector paths.
 - Swedish and English, light/dark themes, and keyboard shortcuts.
 
 ### Privacy and updates
