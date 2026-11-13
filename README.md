@@ -12,7 +12,7 @@
 
 ### Installera
 
-1. Hämta projektet med **Code → Download ZIP** och packa upp ZIP-filen.
+1. Öppna den senaste GitHub-releasen och packa upp dess **Source code (zip)**. Den innehåller både tillägget och trycklogotypen.
 2. Öppna `brave://extensions` i Brave eller `chrome://extensions` i Chrome.
 3. Slå på **Utvecklarläge**.
 4. Klicka på **Läs in opackat** och välj projektmappen som innehåller `manifest.json`.
@@ -20,15 +20,15 @@
 
 ### Plattformar
 
-Tillägget är OS-oberoende och avsett för Windows, macOS och Linux i Chromium-baserade Brave/Chrome-versioner som uppfyller manifestets Chromium 116-krav. Filväljare och minne av sparmappar beror på webbläsarens API-stöd; webbläsarens egen sparruta används som reserv. Ett webbläsartillägg kan inte minimera eller stänga sig till operativsystemets systemfält (systray). Som alternativ kan **Öppna Sida till PDF-panelen** via högerklick på tilläggsikonen lämna panelen öppen i en vanlig flik. Riktig testning på alla operativsystem återstår.
+Tillägget är OS-oberoende och avsett för Windows, macOS och Linux i Chromium-baserade Brave/Chrome-versioner som uppfyller manifestets Chromium 116-krav. Filväljare och minne av sparmappar beror på webbläsarens API-stöd; webbläsarens egen sparruta används som reserv. Ett webbläsartillägg kan inte minimera eller stänga sig till operativsystemets systemfält (systray). Riktig testning på alla operativsystem återstår.
 
 ### Använda tillägget
 
-- Klicka på tilläggsikonen och sedan på **Spara PDF**. Spar-dialogen öppnas varje gång och minns senast valda mapp.
-- Högerklicka på tilläggsikonen och välj **Spara aktuell sida som PDF** för att öppna samma sparflöde.
+- Vänsterklicka på tilläggsikonen för att spara aktuell sida som PDF. Du behöver inte lägga till webbplatsen först; tillägget frågar om platsen där filen ska sparas.
+- Högerklicka på tilläggsikonen och välj **Inställningar** för att ändra inställningar.
+- Lägg till en webbplats endast om du vill visa den flytande PDF-knappen på sidan.
 - Högerklicka på markerad text för att spara bara texten, eller välj **Välj område att spara som PDF** och klicka på ett område.
 - I panelen kan du välja sidintervall, till exempel `1-3, 5`. Lämna tomt för alla sidor.
-- Lägg till en webbplats i inställningarna om du vill visa den flytande PDF-knappen på sidan.
 
 ### Funktioner
 
@@ -41,7 +41,7 @@ Tillägget är OS-oberoende och avsett för Windows, macOS och Linux i Chromium-
 - Förhandsgranska artikelurvalet före sparning; PDF-inställningarna har också en ungefärlig live-skiss.
 - Valbar rullning genom sidan försöker ladda innehåll som annars visas först när man scrollar.
 - Välj kompakt eller rymlig layout. Snabbtangenter visas i en dialog och ändras via webbläsarens genvägsinställningar.
-- Ny sid- och nedladdningsikon samt en tryckfärdig SVG-logotyp med text omvandlad till vektorbanor.
+- Ny sid- och nedladdningsikon samt tryckfärdig SVG-logotyp med text omvandlad till vektorbanor. Logotypen ingår i releasens käll-ZIP och laddas inte ner separat.
 - Svenska och engelska, ljust/mörkt tema och snabbtangenter.
 
 ### Integritet och uppdateringar
@@ -56,7 +56,7 @@ Utskrift och inställningar hanteras lokalt. Tillägget begär webbplatsåtkomst
 
 ### Install
 
-1. Select **Code → Download ZIP** on GitHub and extract the ZIP file.
+1. Open the latest GitHub release and extract its **Source code (zip)**. It includes both the extension and the print-ready logo.
 2. Open `brave://extensions` in Brave or `chrome://extensions` in Chrome.
 3. Turn on **Developer mode**.
 4. Click **Load unpacked** and select the project folder containing `manifest.json`.
@@ -64,15 +64,15 @@ Utskrift och inställningar hanteras lokalt. Tillägget begär webbplatsåtkomst
 
 ### Platforms
 
-The extension is OS-independent and intended for Windows, macOS, and Linux in Chromium-based Brave/Chrome versions that meet the manifest's Chromium 116 baseline. File pickers and remembered folders depend on browser API support; the browser's own save dialog is the fallback. A browser extension cannot minimize or close itself to the operating system's system tray. As an alternative, right-click the extension icon and choose **Open the Page to PDF panel** to leave the panel open in a regular browser tab. Real testing on every operating system is still outstanding.
+The extension is OS-independent and intended for Windows, macOS, and Linux in Chromium-based Brave/Chrome versions that meet the manifest's Chromium 116 baseline. File pickers and remembered folders depend on browser API support; the browser's own save dialog is the fallback. A browser extension cannot minimize or close itself to the operating system's system tray. Real testing on every operating system is still outstanding.
 
 ### Use
 
-- Click the extension icon, then click **Save PDF**. The save dialog opens every time and remembers the most recently selected folder.
-- Right-click the extension icon and choose **Save current page as PDF** to open the same save flow.
+- Left-click the extension icon to save the current page as a PDF. You do not need to add the site first; the extension asks where to save the file.
+- Right-click the extension icon and choose **Settings** to change settings.
+- Add a website only if you want the floating PDF button to appear on that site.
 - Right-click selected text to save just that text, or choose **Choose an area to save as PDF** and click an area on the page.
 - Enter a page range in the panel, for example `1-3, 5`. Leave it blank to include every page.
-- Add a website in Settings to show the floating PDF button on that site.
 
 ### Features
 
@@ -85,7 +85,7 @@ The extension is OS-independent and intended for Windows, macOS, and Linux in Ch
 - Preview the extracted article before saving; PDF settings also include an approximate live sketch.
 - Optional page scrolling attempts to load content that appears only after scrolling.
 - Choose a compact or spacious layout. Keyboard shortcuts are listed in a dialog and changed through the browser's shortcut settings.
-- A redesigned page-and-download icon and a print-ready SVG logo with the wordmark converted to vector paths.
+- A redesigned page-and-download icon and a print-ready SVG logo with the wordmark converted to vector paths. The logo is included in the release source ZIP; there is no separate download.
 - Swedish and English, light/dark themes, and keyboard shortcuts.
 
 ### Privacy and updates

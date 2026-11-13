@@ -28,11 +28,7 @@ const CONTENT_FILES = ['src/lib/icons.js', 'src/content.js'];
 const MENU_ID = 'page-to-pdf-save';
 const SELECTION_MENU_ID = 'page-to-pdf-save-selection';
 const ELEMENT_MENU_ID = 'page-to-pdf-pick-element';
-const PANEL_MENU_ID = 'page-to-pdf-open-panel';
-const ACTION_SAVE_MENU_ID = 'page-to-pdf-action-save';
-const UPDATE_MENU_ID = 'page-to-pdf-check-updates';
-const RELOAD_MENU_ID = 'page-to-pdf-reload';
-const UPDATE_API_PERMISSION = 'https://api.github.com/*';
+const ACTION_SETTINGS_MENU_ID = 'page-to-pdf-action-settings';
 const PENDING_CAPTURE_PREFIX = 'pending-capture:';
 const BADGE_BUSY = '…';
 const BADGE_OK = '✓';
@@ -1577,28 +1573,18 @@ async function syncContextMenu(settings) {
       title: t(lang, 'menu.pickElement'),
       contexts: ['page', 'image', 'link']
     });
+  } catch (error) {
+    console.warn('Kunde inte skapa sidans högerklicksmeny', error);
+  }
+
+  try {
     chrome.contextMenus.create({
-      id: ACTION_SAVE_MENU_ID,
-      title: t(lang, 'menu.saveCurrentPage'),
-      contexts: ['action']
-    });
-    chrome.contextMenus.create({
-      id: PANEL_MENU_ID,
-      title: t(lang, 'menu.openPanel'),
-      contexts: ['action']
-    });
-    chrome.contextMenus.create({
-      id: UPDATE_MENU_ID,
-      title: t(lang, 'menu.checkUpdates'),
-      contexts: ['action']
-    });
-    chrome.contextMenus.create({
-      id: RELOAD_MENU_ID,
-      title: t(lang, 'menu.reloadUpdatedFiles'),
+      id: ACTION_SETTINGS_MENU_ID,
+      title: t(lang, 'menu.settings'),
       contexts: ['action']
     });
   } catch (error) {
-    console.warn('Kunde inte skapa högerklicksmenyn', error);
+    console.warn('Kunde inte skapa inställningsmenyn för tilläggsikonen', error);
   }
 
   try {
@@ -1748,31 +1734,8 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
     void getSettings().then((settings) => startElementPicker(tab, settings));
     return;
   }
-  if (info.menuItemId === ACTION_SAVE_MENU_ID && tab) {
-    // The action context menu is opened by right-clicking the extension icon.
-    // Open the same save panel so it uses the remembered save picker location.
-    void openPanelTab(tab);
-    return;
-  }
-  if (info.menuItemId === PANEL_MENU_ID) {
-    void openPanelTab(tab);
-    return;
-  }
-  if (info.menuItemId === RELOAD_MENU_ID) {
-    // Reloads the extension from its existing unpacked folder; it does not download files.
-    chrome.runtime.reload();
-    return;
-  }
-  if (info.menuItemId === UPDATE_MENU_ID) {
-    void (async () => {
-      try {
-        // Ask at the context-menu user gesture; the panel checks automatically after it opens.
-        await chrome.permissions.request({ origins: [UPDATE_API_PERMISSION] });
-      } catch {
-        /* Panel will display the permission state and let the user retry. */
-      }
-      await openPanelTab(tab, { checkUpdates: true });
-    })();
+  if (info.menuItemId === ACTION_SETTINGS_MENU_ID) {
+    void chrome.runtime.openOptionsPage();
   }
 });
 

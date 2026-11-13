@@ -8,7 +8,7 @@ export const STRINGS = {
     appName: 'Sida till PDF',
     'a11y.skipContent': 'Hoppa till huvudinnehåll',
     appTagline: 'Spara valda sidor som PDF',
-    'action.savePage': 'Klicka för att spara aktuell sida som PDF',
+    'action.savePage': 'Klicka för att spara aktuell sida som PDF, även utan tillagd webbplats',
 
     'menu.savePdf': 'Spara sidan som PDF',
     'menu.saveCurrentPage': 'Spara aktuell sida som PDF',
@@ -17,6 +17,7 @@ export const STRINGS = {
     'menu.openPanel': 'Öppna Sida till PDF-panelen',
     'menu.checkUpdates': 'Sök efter GitHub-uppdateringar',
     'menu.reloadUpdatedFiles': 'Läs in uppdaterade filer från mappen',
+    'menu.settings': 'Inställningar',
 
     'update.title': 'GitHub-uppdatering',
     'update.idle': 'Kontrollera om en ny version finns.',
@@ -295,7 +296,7 @@ export const STRINGS = {
     appName: 'Page to PDF',
     'a11y.skipContent': 'Skip to main content',
     appTagline: 'Save selected pages as PDF',
-    'action.savePage': 'Click to save the current page as PDF',
+    'action.savePage': 'Click to save the current page as PDF, even if the site is not added',
 
     'menu.savePdf': 'Save page as PDF',
     'menu.saveCurrentPage': 'Save current page as PDF',
@@ -304,6 +305,7 @@ export const STRINGS = {
     'menu.openPanel': 'Open the Page to PDF panel',
     'menu.checkUpdates': 'Check for GitHub updates',
     'menu.reloadUpdatedFiles': 'Reload updated files from folder',
+    'menu.settings': 'Settings',
 
     'update.title': 'GitHub updates',
     'update.idle': 'Check whether a newer version is available.',

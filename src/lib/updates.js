@@ -7,6 +7,7 @@ export const TRACKED_FILES = [
   'LICENSE',
   'README.md',
   'tests/BROWSER-CHECKLIST.md',
+  'tests/action.test.js',
   'third_party/licenses/PDFJS-LICENSE.txt',
   'third_party/licenses/PDF-LIB-LICENSE.md',
   'fonts/OFL-Inter.txt',
